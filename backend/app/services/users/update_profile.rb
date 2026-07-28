@@ -76,7 +76,9 @@ module Users
 
       def validate_birthday(birthday, user)
         if birthday && !birthday.empty?
-          parsed = Date.parse(birthday)
+          # Strict ISO only — Date.parse would guess at ambiguous formats like
+          # "02/08/1990" (DD/MM-biased, the opposite of an MM/DD client).
+          parsed = Date.strptime(birthday, "%Y-%m-%d")
           if parsed < ValidationLimits::BIRTHDAY_MIN
             return Failure(ServiceError.validation("Birthday is too far in the past"))
           end
@@ -165,10 +167,13 @@ module Users
             update_data[:phone_number] = stripped.empty? ? nil : Encryption.encrypt(stripped, user_id: user_id)
           end
 
-          # Birthday: blank -> nil, otherwise encrypt (stored as encrypted ISO 8601 string)
+          # Birthday: blank -> nil, otherwise re-serialize to ISO 8601 before
+          # encrypting so the stored string is normalized no matter how the
+          # client padded it (validate_birthday already guaranteed it parses)
           unless birthday.nil?
             stripped = birthday.strip
-            update_data[:birthday] = stripped.empty? ? nil : Encryption.encrypt(stripped, user_id: user_id)
+            update_data[:birthday] =
+              stripped.empty? ? nil : Encryption.encrypt(Date.strptime(stripped, "%Y-%m-%d").iso8601, user_id: user_id)
           end
 
           # IBAN: blank -> nil, otherwise normalize and encrypt

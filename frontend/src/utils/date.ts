@@ -132,13 +132,14 @@ export function formatDateRange(
   ).toLocaleString(DateTime.DATE_MED)
 }
 
-/** Localized birthday display (e.g. "27/02/2024" or "02/27/2024") */
+/**
+ * Localized birthday display (e.g. "Feb 27, 2024" or "27 feb 2024"). The month
+ * is always spelled out: an all-numeric rendering reads differently in DD/MM
+ * and MM/DD locales, and a birthday is exactly the field where that ambiguity
+ * hides a wrongly-entered date.
+ */
 export function formatBirthday(dateString: string, locale?: string): string {
-  return parseDate(dateString, locale).toLocaleString({
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
+  return parseDate(dateString, locale).toLocaleString(DateTime.DATE_MED)
 }
 
 /**
