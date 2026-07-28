@@ -287,7 +287,8 @@ test.describe('Profile Feature', () => {
 
       // Verify contact fields are displayed
       await expect(page.getByText('+31600000000')).toBeVisible()
-      await expect(page.getByText('01/15/1990')).toBeVisible()
+      // Spelled-out month — an all-numeric date would be ambiguous (DD/MM vs MM/DD)
+      await expect(page.getByText('Jan 15, 1990')).toBeVisible()
 
       // Click edit contact button to trigger inline editing
       await page.getByTestId('edit-contact-button').click()

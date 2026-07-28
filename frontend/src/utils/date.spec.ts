@@ -83,10 +83,9 @@ describe('formatDateRange', () => {
 })
 
 describe('formatBirthday', () => {
-  it('returns a non-empty string containing the year', () => {
-    const result = formatBirthday('1990-05-27')
-    expect(result).toBeTruthy()
-    expect(result).toContain('1990')
+  it('spells out the month so day/month order cannot be misread', () => {
+    expect(formatBirthday('1990-05-27', 'en-US')).toBe('May 27, 1990')
+    expect(formatBirthday('1990-05-27', 'nl')).toBe('27 mei 1990')
   })
 })
 

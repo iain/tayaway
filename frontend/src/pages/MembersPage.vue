@@ -21,11 +21,13 @@ import AppAvatar from '@/components/common/AppAvatar.vue'
 import type { PoolMember } from '@/types/pool'
 import { can } from '@/composables/usePermission'
 import { formatBirthday, daysUntilBirthday } from '@/utils/date'
+import { useLocale } from '@/composables/useLocale'
 import { generateVCard, downloadVCard } from '@/utils/vcard'
 import { getInitials } from '@/utils/member'
 
 const membersStore = useMembersStore()
 const { members } = storeToRefs(membersStore)
+const { locale } = useLocale()
 const authStore = useAuthStore()
 const workspaceStore = useWorkspaceStore()
 
@@ -162,7 +164,7 @@ function handleDownloadVCard(member: PoolMember): void {
               class="text-ink-muted flex items-center gap-1 text-sm"
             >
               <CakeIcon class="size-3.5" />
-              {{ formatBirthday(member.birthday) }}
+              {{ formatBirthday(member.birthday, locale) }}
             </p>
           </div>
         </div>
