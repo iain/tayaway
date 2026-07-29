@@ -443,6 +443,27 @@ describe('minimizeTransfers', () => {
     const transfers = minimizeTransfers(balances)
     expect(transfers[0]!.amount).toBe(33.33)
   })
+
+  it('breaks balance ties by userId so output is independent of Map order', () => {
+    // bob and alice owe the same amount; carol and dave are owed the same
+    // amount. Whatever order the Map was built in, the pairing must come
+    // out identical.
+    const entries: [string, number][] = [
+      ['bob', 50],
+      ['alice', 50],
+      ['dave', -50],
+      ['carol', -50],
+    ]
+
+    const forward = minimizeTransfers(new Map(entries))
+    const reversed = minimizeTransfers(new Map([...entries].reverse()))
+
+    expect(forward).toEqual(reversed)
+    expect(forward).toEqual([
+      { fromUserId: 'alice', toUserId: 'carol', amount: 50 },
+      { fromUserId: 'bob', toUserId: 'dave', amount: 50 },
+    ])
+  })
 })
 
 describe('deriveBalancesFromTransfers', () => {

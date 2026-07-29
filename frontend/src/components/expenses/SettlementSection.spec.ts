@@ -198,6 +198,70 @@ function mountSection(event: HydratedEvent = mkEvent()) {
   })
 }
 
+describe('SettlementSection transfer ordering', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    mockMembers = [
+      mkMember(),
+      mkMember({
+        id: 'member-alice',
+        userId: 'user-alice',
+        email: 'alice@example.com',
+        name: 'Alice',
+      }),
+      mkMember({
+        id: 'member-bob',
+        userId: 'user-bob',
+        email: 'bob@example.com',
+        name: 'Bob',
+      }),
+    ]
+    mockAttendances = []
+    mockExpenses = []
+    mockSettlements = [mkSettlement({})]
+    mockParticipants = []
+  })
+
+  it('renders transfers by amount descending regardless of pool order', () => {
+    mockTransfers = [
+      mkTransfer({ id: 'tr-small', fromUserId: 'user-alice', amount: 10 }),
+      mkTransfer({ id: 'tr-big', fromUserId: 'user-bob', amount: 120 }),
+      mkTransfer({ id: 'tr-mid', fromUserId: 'user-alice', amount: 50 }),
+    ]
+
+    const wrapper = mountSection()
+
+    const amounts = wrapper
+      .findAll('[data-testid="transfer-row"]')
+      .map((row) => row.text())
+    expect(amounts).toHaveLength(3)
+    expect(amounts[0]).toContain('120')
+    expect(amounts[1]).toContain('50')
+    expect(amounts[2]).toContain('10')
+  })
+
+  it('breaks amount ties by id so the order is stable across pool orders', () => {
+    const tied = [
+      mkTransfer({ id: 'tr-b', fromUserId: 'user-bob', amount: 50 }),
+      mkTransfer({ id: 'tr-a', fromUserId: 'user-alice', amount: 50 }),
+    ]
+
+    const renderedNames = (transfers: PoolSettlementTransfer[]) => {
+      mockTransfers = transfers
+      return mountSection()
+        .findAll('[data-testid="transfer-row"]')
+        .map((row) => row.text())
+    }
+
+    const forward = renderedNames(tied)
+    const reversed = renderedNames([...tied].reverse())
+
+    expect(forward).toEqual(reversed)
+    expect(forward[0]).toContain('Alice')
+    expect(forward[1]).toContain('Bob')
+  })
+})
+
 describe('SettlementSection drift detection', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
