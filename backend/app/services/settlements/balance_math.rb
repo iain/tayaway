@@ -161,8 +161,10 @@ module Settlements
     end
 
     def minimize_transfers(balances)
-      debtors = balances.select { |_, v| v > 0 }.sort_by { |_, v| -v }.map { |k, v| [k, v] }
-      creditors = balances.select { |_, v| v < 0 }.sort_by { |_, v| v }.map { |k, v| [k, -v] }
+      # Ties broken by user id so the result doesn't depend on hash order.
+      # Mirrors the frontend's tie-break in utils/settlement.ts.
+      debtors = balances.select { |_, v| v > 0 }.sort_by { |k, v| [-v, k] }.map { |k, v| [k, v] }
+      creditors = balances.select { |_, v| v < 0 }.sort_by { |k, v| [v, k] }.map { |k, v| [k, -v] }
 
       transfers = []
       d_idx = 0

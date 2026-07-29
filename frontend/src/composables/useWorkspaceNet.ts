@@ -169,8 +169,9 @@ export function useWorkspaceNet(): {
       })
     }
 
-    // Largest amounts first — surfaces the most material balance for the user.
-    results.sort((a, b) => b.amount - a.amount)
+    // Largest amounts first — surfaces the most material balance for the
+    // user. Ties by id so the order doesn't depend on pool arrival order.
+    results.sort((a, b) => b.amount - a.amount || a.id.localeCompare(b.id))
     return results
   })
 
@@ -287,10 +288,12 @@ export function useWorkspaceNet(): {
       })
     }
 
-    // Most recent first — what the user just did is most relevant.
+    // Most recent first — what the user just did is most relevant. Ties by
+    // id so the order doesn't depend on pool arrival order.
     results.sort(
       (a, b) =>
-        new Date(b.latestPaidAt).getTime() - new Date(a.latestPaidAt).getTime()
+        new Date(b.latestPaidAt).getTime() -
+          new Date(a.latestPaidAt).getTime() || a.id.localeCompare(b.id)
     )
     return results
   })

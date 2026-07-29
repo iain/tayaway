@@ -135,14 +135,16 @@ export function computeBalances(
 export function minimizeTransfers(
   balances: Map<string, number>
 ): PreviewTransfer[] {
+  // Ties broken by userId so the result doesn't depend on Map insertion
+  // order. Mirrors the backend's tie-break.
   const debtors = [...balances.entries()]
     .filter(([, v]) => v > 0)
-    .sort(([, a], [, b]) => b - a)
+    .sort(([ka, a], [kb, b]) => b - a || ka.localeCompare(kb))
     .map(([k, v]) => ({ userId: k, amount: v }))
 
   const creditors = [...balances.entries()]
     .filter(([, v]) => v < 0)
-    .sort(([, a], [, b]) => a - b)
+    .sort(([ka, a], [kb, b]) => a - b || ka.localeCompare(kb))
     .map(([k, v]) => ({ userId: k, amount: -v }))
 
   const transfers: PreviewTransfer[] = []

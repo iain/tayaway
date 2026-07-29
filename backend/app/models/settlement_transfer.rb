@@ -10,17 +10,17 @@ class SettlementTransfer < Data.define(:id, :settlement_id, :from_user_id, :to_u
     end
 
     def for_settlement(settlement_id)
-      dataset.where(settlement_id: settlement_id).order(:created_at).all
+      dataset.where(settlement_id: settlement_id).order(:created_at, :id).all
     end
 
     def for_settlement_ids(settlement_ids)
       return [] if settlement_ids.empty?
 
-      dataset.where(settlement_id: settlement_ids).order(:created_at).all
+      dataset.where(settlement_id: settlement_ids).order(:created_at, :id).all
     end
 
     def ids_for_settlement(settlement_id)
-      DB[:settlement_transfers].where(settlement_id: settlement_id).order(:created_at).select_map(:id)
+      DB[:settlement_transfers].where(settlement_id: settlement_id).order(:created_at, :id).select_map(:id)
     end
 
     def ids_for_settlement_ids(settlement_ids)
@@ -28,7 +28,7 @@ class SettlementTransfer < Data.define(:id, :settlement_id, :from_user_id, :to_u
 
       DB[:settlement_transfers]
         .where(settlement_id: settlement_ids)
-        .order(:created_at)
+        .order(:created_at, :id)
         .select_map([:settlement_id, :id])
         .each_with_object(Hash.new { |h, k| h[k] = [] }) { |(settlement_id, id), h| h[settlement_id.to_s] << id.to_s }
     end
