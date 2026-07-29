@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { SwatchIcon, LanguageIcon } from '@heroicons/vue/24/outline'
 import BaseCard from '@/components/common/BaseCard.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
@@ -28,18 +29,34 @@ function formatSample(locale: string): string {
   return `${formatDateShort('2026-01-31', locale)} · ${formatAmount(1234.56, locale)}`
 }
 
-const localeOptions: { id: string; name: string }[] = [
-  { id: 'auto', name: 'Automatic' },
-  { id: 'en-US', name: 'English (US)' },
-  { id: 'en-GB', name: 'English (UK)' },
-  { id: 'en-NL', name: 'English (Netherlands)' },
-  { id: 'nl-NL', name: 'Nederlands' },
+const curatedLocales: { id: string; label: string }[] = [
+  { id: 'auto', label: 'Automatic' },
+  { id: 'en-US', label: 'English (US)' },
+  { id: 'en-GB', label: 'English (UK)' },
+  { id: 'en-NL', label: 'English (Netherlands)' },
+  { id: 'nl-NL', label: 'Nederlands' },
 ]
 
-const formatOptions = localeOptions.map(({ id, name }) => ({
-  id,
-  label: `${name} · ${formatSample(id === 'auto' ? browserLocale : id)}`,
-}))
+// A persisted choice from outside the curated list (an older app version,
+// devtools) still drives formatting, so it gets surfaced as its own checked
+// option rather than leaving the group with nothing selected. Picking any
+// curated option makes it disappear again.
+const formatOptions = computed(() => {
+  const options = curatedLocales.map(({ id, label }) => ({
+    id,
+    label,
+    description: formatSample(id === 'auto' ? browserLocale : id),
+  }))
+  const chosen = localePreference.value
+  if (chosen && !curatedLocales.some((option) => option.id === chosen)) {
+    options.push({
+      id: chosen,
+      label: chosen,
+      description: formatSample(chosen),
+    })
+  }
+  return options
+})
 
 function onSelectFormat(value: string): void {
   if (value === 'auto') {
@@ -65,7 +82,7 @@ function onSelectFormat(value: string): void {
       />
     </BaseCard>
 
-    <div class="mt-8">
+    <div class="mt-section">
       <SectionHeading :icon="LanguageIcon" title="Formats" />
       <BaseCard padded>
         <FormRadioGroup

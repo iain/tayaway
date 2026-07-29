@@ -61,6 +61,36 @@ describe('SettingsAppearancePage', () => {
     expect(localStorage.getItem('tayaway:locale')).toBe('nl-NL')
   })
 
+  // The sample rides as a description, not inside the label: a screen reader
+  // announces "English (US)", not the whole formatted date-and-amount string.
+  it('keeps the sample out of the option name, wiring it as a description', () => {
+    const wrapper = mount(SettingsAppearancePage)
+
+    const input = wrapper.find('input[type="radio"][value="en-US"]')
+    const label = wrapper.find(`label[for="${input.attributes('id')}"]`)
+    expect(label.text()).toBe('English (US)')
+
+    const describedBy = input.attributes('aria-describedby')
+    const description = wrapper.find(`[id="${describedBy}"]`)
+    expect(description.text()).toContain('2026')
+  })
+
+  // A persisted tag outside the curated list (an older app version, devtools)
+  // must not leave the group with nothing selected while that locale silently
+  // drives formatting — surface it as its own checked option.
+  it('surfaces a stored locale outside the curated list as a checked option', () => {
+    const { setLocale } = useLocale()
+    setLocale('fr-FR')
+
+    const wrapper = mount(SettingsAppearancePage)
+
+    const stray = wrapper.find<HTMLInputElement>(
+      'input[type="radio"][value="fr-FR"]'
+    )
+    expect(stray.exists()).toBe(true)
+    expect(stray.element.checked).toBe(true)
+  })
+
   it('falls back to the browser locale when format automatic is picked', async () => {
     const wrapper = mount(SettingsAppearancePage)
     await wrapper.find('input[type="radio"][value="nl-NL"]').setValue(true)
