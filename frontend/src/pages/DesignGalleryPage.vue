@@ -686,7 +686,11 @@ function openModal(size: ModalSize): void {
                       description="When the group should be pinged."
                       :options="[
                         { id: 'a', label: 'Right away' },
-                        { id: 'b', label: 'Daily digest' },
+                        {
+                          id: 'b',
+                          label: 'Daily digest',
+                          description: 'One summary each morning at 09:00.',
+                        },
                         { id: 'c', label: 'Weekly digest' },
                       ]"
                     />

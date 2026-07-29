@@ -51,8 +51,12 @@ test.describe('Appearance settings', () => {
     await expect(page.getByRole('radio', { name: 'Dark' })).toBeChecked()
 
     // The browser reports a light device, so automatic must drop back to light
-    // — the state the old navbar toggle could never return to.
-    await page.getByRole('radio', { name: 'Automatic' }).check()
+    // — the state the old navbar toggle could never return to. Scoped to the
+    // Theme fieldset: the formats group below has its own "Automatic" radio.
+    await page
+      .getByRole('group', { name: 'Theme' })
+      .getByRole('radio', { name: 'Automatic' })
+      .check()
     await expect.poll(isDark(page)).toBe(false)
   })
 

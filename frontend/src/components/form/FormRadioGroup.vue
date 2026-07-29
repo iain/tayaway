@@ -6,7 +6,7 @@ const props = defineProps<{
   legend: string
   description?: string
   modelValue: string
-  options: { id: string; label: string }[]
+  options: { id: string; label: string; description?: string }[]
   disabled?: boolean
 }>()
 
@@ -22,6 +22,14 @@ const descriptionId = `${uid}-description`
 // duplicate DOM id silently breaks label association for both.
 function inputId(optionId: string): string {
   return `${props.name}-${optionId}`
+}
+
+// Description lives outside the <label> and is wired via aria-describedby, so
+// the option's accessible NAME stays the short label while the supporting
+// text is still announced — a name that contains the whole description is
+// what screen-reader users would otherwise have to sit through per option.
+function optionDescriptionId(optionId: string): string {
+  return `${inputId(optionId)}-description`
 }
 </script>
 
@@ -50,6 +58,9 @@ function inputId(optionId: string): string {
           :value="option.id"
           :checked="modelValue === option.id"
           :disabled="disabled"
+          :aria-describedby="
+            option.description ? optionDescriptionId(option.id) : undefined
+          "
           class="bg-surface-sunken border-line focus-visible:outline-focus relative size-4 appearance-none rounded-full border before:absolute before:inset-1 before:rounded-full before:bg-white not-checked:before:hidden after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] checked:border-rose-500 checked:bg-rose-500 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 forced-colors:appearance-auto forced-colors:before:hidden"
           @change="$emit('update:modelValue', option.id)"
         />
@@ -58,12 +69,21 @@ function inputId(optionId: string): string {
              ~40px touch without the layout growing — the same trick the
              navbar's workspace switcher uses. The label's bleed stops at the
              radio's edge: overlapping it would leave the radio unclickable. -->
-        <label
-          :for="inputId(option.id)"
-          class="text-label text-ink relative block after:absolute after:-inset-y-2 after:right-0 after:-left-3 after:content-['']"
-        >
-          {{ option.label }}
-        </label>
+        <div class="min-w-0">
+          <label
+            :for="inputId(option.id)"
+            class="text-label text-ink relative block after:absolute after:-inset-y-2 after:right-0 after:-left-3 after:content-['']"
+          >
+            {{ option.label }}
+          </label>
+          <p
+            v-if="option.description"
+            :id="optionDescriptionId(option.id)"
+            class="text-meta text-ink-muted"
+          >
+            {{ option.description }}
+          </p>
+        </div>
       </div>
     </div>
   </fieldset>
