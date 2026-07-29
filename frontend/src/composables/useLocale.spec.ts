@@ -57,4 +57,24 @@ describe('useLocale', () => {
     expect(locale.value).toBe('nl-NL')
     expect(localStorage.getItem('tayaway:locale')).toBe('nl-NL')
   })
+
+  it('exposes the preference: null until a locale is explicitly chosen', () => {
+    const { preference, setLocale, clearLocale } = useLocale()
+    clearLocale()
+    expect(preference.value).toBeNull()
+
+    setLocale('nl-NL')
+    expect(preference.value).toBe('nl-NL')
+  })
+
+  it('clearLocale returns to the browser locale and forgets the choice', () => {
+    const { locale, preference, setLocale, clearLocale } = useLocale()
+    setLocale('fr-FR')
+
+    clearLocale()
+
+    expect(preference.value).toBeNull()
+    expect(locale.value).toBe(navigator.language)
+    expect(localStorage.getItem('tayaway:locale')).toBeNull()
+  })
 })
