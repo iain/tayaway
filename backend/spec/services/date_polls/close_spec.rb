@@ -177,6 +177,58 @@ RSpec.describe DatePolls::Close do
     expect(row[:days].to_a).to eq(picked)
   end
 
+  it "resets non-voters' answers when closing changes the dates" do
+    owner = TestFactories.user
+    yes_voter = TestFactories.user
+    bystander = TestFactories.user
+    event = TestFactories.event(workspace: workspace, user: owner)
+    # Poll opened on an already-dated event ("Open Date Poll Anyway"): the
+    # winning range replaces the dates, so answers given for the old window
+    # revert to pending — keep the people, clear the answers — except
+    # yes-voters on the winner, whose vote is their new answer.
+    DB[:events].where(id: event[:id]).update(start_date: Date.today + 30, end_date: Date.today + 32)
+    date_poll = TestFactories.date_poll(event: event)
+    date_range = TestFactories.date_range(date_poll: date_poll)
+    TestFactories.vote(user: yes_voter, date_range: date_range, response: "yes")
+    picked = [(Date.today + 1).iso8601]
+    yes_row = TestFactories.attendance(event: event, user: yes_voter, days: picked)
+    bystander_row = TestFactories.attendance(event: event, user: bystander, status: "going")
+    guest = TestFactories.guest(workspace: workspace)
+    guest_row = TestFactories.attendance(event: event, guest: guest, host: owner)
+
+    result = described_class.call(
+      event_id: event[:id],
+      membership: membership_for(owner),
+      selected_date_range_id: date_range[:id]
+    )
+
+    expect(result.success?).to be true
+    rows = DB[:attendances].where(event_id: event[:id]).all.to_h { |r| [r[:id], r] }
+    expect(rows[bystander_row[:id]][:status]).to eq("pending")
+    expect(rows[bystander_row[:id]][:days]).to be_nil
+    expect(rows[guest_row[:id]][:status]).to eq("pending")
+    expect(rows[yes_row[:id]][:status]).to eq("going")
+    expect(rows[yes_row[:id]][:days].to_a).to eq(picked)
+  end
+
+  it "leaves answers alone when the poll sets dates for the first time" do
+    owner = TestFactories.user
+    bystander = TestFactories.user
+    event = TestFactories.event(workspace: workspace, user: owner)
+    date_poll = TestFactories.date_poll(event: event)
+    date_range = TestFactories.date_range(date_poll: date_poll)
+    bystander_row = TestFactories.attendance(event: event, user: bystander, status: "going")
+
+    result = described_class.call(
+      event_id: event[:id],
+      membership: membership_for(owner),
+      selected_date_range_id: date_range[:id]
+    )
+
+    expect(result.success?).to be true
+    expect(DB[:attendances].where(id: bystander_row[:id]).get(:status)).to eq("going")
+  end
+
   describe "poll closed emails" do
     before { Mail::TestMailer.deliveries.clear }
 
@@ -267,6 +319,28 @@ RSpec.describe DatePolls::Close do
       message = Mail::TestMailer.deliveries.find { |m| m.to.first == "no@example.com" }
       text_body = message.text_part.body.to_s
       expect(text_body).to include("Head to the event page to RSVP")
+    end
+
+    it "sends the RSVP prompt to going members whose answer was reset" do
+      owner = TestFactories.user
+      voter = TestFactories.user(email: "voter@example.com")
+      bystander = TestFactories.user(email: "bystander@example.com")
+      event = TestFactories.event(workspace: workspace, user: owner)
+      DB[:events].where(id: event[:id]).update(start_date: Date.today + 30, end_date: Date.today + 32)
+      date_poll = TestFactories.date_poll(event: event)
+      date_range = TestFactories.date_range(date_poll: date_poll)
+      TestFactories.vote(user: voter, date_range: date_range, response: "yes")
+      TestFactories.attendance(event: event, user: bystander, status: "going")
+
+      described_class.call(
+        event_id: event[:id],
+        membership: membership_for(owner),
+        selected_date_range_id: date_range[:id]
+      )
+
+      message = Mail::TestMailer.deliveries.find { |m| m.to.first == "bystander@example.com" }
+      expect(message).not_to be_nil
+      expect(message.text_part.body.to_s).to include("Head to the event page to RSVP")
     end
 
     # Failure-isolation for the notifier is exercised in

@@ -3,19 +3,21 @@
 module DatePolls
   # Fans a poll_closed notification out to every voter across every range
   # of the poll — not just yes-voters on the winning range — so the no-
-  # voters also learn the dates are locked. The kind's copy branches on
-  # `auto_rsvped` so yes-voters on the winning range get the "you're in"
-  # message and everyone else gets the RSVP prompt.
+  # voters also learn the dates are locked, plus the going members whose
+  # answer the close just reset (`reset_user_ids`) so nobody's RSVP is
+  # cleared silently. The kind's copy branches on `auto_rsvped` so
+  # yes-voters on the winning range get the "you're in" message and
+  # everyone else gets the RSVP prompt.
   module OnClosed
     class << self
-      def call(event:, date_range:, yes_voter_ids:)
+      def call(event:, date_range:, yes_voter_ids:, reset_user_ids: [])
         Notifications::Safely.deliver(context: "DatePolls::OnClosed") do
           all_date_range_ids = DateRange.ids_for_date_poll(date_range.date_poll_id)
           all_votes = Vote.for_date_range_ids(all_date_range_ids)
-          voter_user_ids = all_votes.map { |v| v.user_id.to_s }.uniq
-          return if voter_user_ids.empty?
+          recipient_ids = (all_votes.map { |v| v.user_id.to_s } + reset_user_ids.map(&:to_s)).uniq
+          return if recipient_ids.empty?
 
-          users = User.for_ids(voter_user_ids)
+          users = User.for_ids(recipient_ids)
           ics_content = build_ics(event, date_range)
           date_label = format_date_label(date_range.start_date, date_range.end_date)
           event_url = APP_CONFIG.frontend_url.path("/events/#{event.id}")
