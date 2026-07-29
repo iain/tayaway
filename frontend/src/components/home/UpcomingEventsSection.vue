@@ -3,6 +3,7 @@ import { useRouter } from 'vue-router'
 import {
   CalendarDaysIcon,
   ChevronRightIcon,
+  HandRaisedIcon,
   UserGroupIcon,
 } from '@heroicons/vue/24/outline'
 import {
@@ -62,8 +63,19 @@ function navigateToEventPage(eventId: string): void {
             />
           </div>
           <div class="mt-3 flex flex-wrap gap-2">
+            <!-- While the poll is unresolved the dates above are provisional,
+                 so the card points at the poll instead of asking for an RSVP
+                 that a poll close would reset. -->
             <router-link
-              v-if="item.needsRsvp"
+              v-if="item.hasActivePoll"
+              :to="`/events/${item.eventId}/planning`"
+              class="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-1 text-sm font-medium text-sky-700 transition-colors hover:bg-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:hover:bg-sky-900/50"
+            >
+              <HandRaisedIcon class="size-4" />
+              Date poll open
+            </router-link>
+            <router-link
+              v-else-if="item.needsRsvp"
               :to="`/events/${item.eventId}/rsvp`"
               class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50"
             >
