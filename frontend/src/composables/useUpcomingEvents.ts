@@ -2,6 +2,7 @@ import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import { useObjectPoolStore } from '@/stores'
+import { isPollActive } from '@/utils/poll'
 import { useEventsList } from './useEventsList'
 
 export interface UpcomingEventItem {
@@ -11,6 +12,7 @@ export interface UpcomingEventItem {
   endDate: string
   attendeeCount: number
   needsRsvp: boolean
+  hasActivePoll: boolean
 }
 
 export { formatDateRange as formatEventDateRange } from '@/utils/date'
@@ -37,14 +39,30 @@ export function useUpcomingEvents() {
       }
     }
 
-    return upcomingEvents.value.map((event) => ({
-      eventId: event.id,
-      eventName: event.name,
-      startDate: event.startDate!,
-      endDate: event.endDate!,
-      attendeeCount: attendeeCount.get(event.id) ?? 0,
-      needsRsvp: userId != null && !answeredByUser.has(event.id),
-    }))
+    // Events whose date poll is still unresolved (open on a dated event, or
+    // expired but not yet closed): the dates on the card are up for revision
+    // and any RSVP would be reset when the poll closes, so voting — not
+    // RSVPing — is the call-to-action.
+    const activePollEventIds = new Set(
+      pool
+        .getAll('datePoll')
+        .filter((p) => isPollActive(p))
+        .map((p) => p.eventId)
+    )
+
+    return upcomingEvents.value.map((event) => {
+      const hasActivePoll = activePollEventIds.has(event.id)
+      return {
+        eventId: event.id,
+        eventName: event.name,
+        startDate: event.startDate!,
+        endDate: event.endDate!,
+        attendeeCount: attendeeCount.get(event.id) ?? 0,
+        needsRsvp:
+          userId != null && !answeredByUser.has(event.id) && !hasActivePoll,
+        hasActivePoll,
+      }
+    })
   })
 
   return { upcomingEvents: items }
