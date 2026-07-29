@@ -5,6 +5,7 @@ import VoteSummaryBar from '@/components/votes/VoteSummaryBar.vue'
 import FormActions from '@/components/form/FormActions.vue'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
 import type { HydratedDateRange } from '@/composables/useHydratedEvent'
+import { rankDateRanges } from '@/utils/poll'
 
 const props = defineProps<{
   open: boolean
@@ -20,19 +21,7 @@ const emit = defineEmits<{
 const selectedId = ref<string | null>(null)
 
 // Top 3 ranked date ranges
-const topRanges = computed(() => {
-  return [...props.dateRanges]
-    .sort((a, b) => {
-      if (b.voteSummary.yes !== a.voteSummary.yes) {
-        return b.voteSummary.yes - a.voteSummary.yes
-      }
-      if (b.voteSummary.preferably_not !== a.voteSummary.preferably_not) {
-        return b.voteSummary.preferably_not - a.voteSummary.preferably_not
-      }
-      return b.voteSummary.no - a.voteSummary.no
-    })
-    .slice(0, 3)
-})
+const topRanges = computed(() => rankDateRanges(props.dateRanges).slice(0, 3))
 
 function handleConfirm(): void {
   if (!selectedId.value) return

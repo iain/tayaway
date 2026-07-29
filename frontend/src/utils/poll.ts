@@ -30,6 +30,33 @@ export function canClosePoll(
   return isPollActive(poll) && dateRangeCount > 0
 }
 
+interface RankableDateRange {
+  startDate: string
+  voteSummary: { yes: number; preferably_not: number; no: number }
+}
+
+/**
+ * Order date options best-first: most yes votes, then fewest hard objections,
+ * then fewest "preferably not", with chronological order as the final
+ * tiebreak so an all-square poll still reads as a calendar.
+ */
+export function rankDateRanges<T extends RankableDateRange>(
+  ranges: readonly T[]
+): T[] {
+  return [...ranges].sort((a, b) => {
+    if (a.voteSummary.yes !== b.voteSummary.yes) {
+      return b.voteSummary.yes - a.voteSummary.yes
+    }
+    if (a.voteSummary.no !== b.voteSummary.no) {
+      return a.voteSummary.no - b.voteSummary.no
+    }
+    if (a.voteSummary.preferably_not !== b.voteSummary.preferably_not) {
+      return a.voteSummary.preferably_not - b.voteSummary.preferably_not
+    }
+    return a.startDate.localeCompare(b.startDate)
+  })
+}
+
 export function formatPollDeadline(
   deadline: string,
   now: number = Date.now()

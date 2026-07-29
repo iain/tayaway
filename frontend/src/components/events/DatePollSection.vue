@@ -14,6 +14,7 @@ import {
   isPollResolved,
   canClosePoll,
   formatPollDeadline,
+  rankDateRanges,
 } from '@/utils/poll'
 import VoteSummaryBar from '@/components/votes/VoteSummaryBar.vue'
 import ClosePollModal from './ClosePollModal.vue'
@@ -38,18 +39,9 @@ const showClosePollModal = ref(false)
 
 const poll = computed(() => props.event.datePoll)
 
-const rankedDateRanges = computed(() => {
-  if (!poll.value) return []
-  return [...poll.value.dateRanges].sort((a, b) => {
-    if (b.voteSummary.yes !== a.voteSummary.yes) {
-      return b.voteSummary.yes - a.voteSummary.yes
-    }
-    if (b.voteSummary.preferably_not !== a.voteSummary.preferably_not) {
-      return b.voteSummary.preferably_not - a.voteSummary.preferably_not
-    }
-    return b.voteSummary.no - a.voteSummary.no
-  })
-})
+const rankedDateRanges = computed(() =>
+  poll.value ? rankDateRanges(poll.value.dateRanges) : []
+)
 
 const deadlineText = computed(() =>
   poll.value ? formatPollDeadline(poll.value.deadline) : ''
