@@ -202,13 +202,15 @@ jobs:
       # surfaces at review time, before the SHA is pushed or self-deployed.
       # --ignore-unfixed keeps it actionable (fails only on vulns with a fix).
       #
-      # Two tiers. The images we author (backend, geoip) hard-gate on
-      # HIGH/CRITICAL — that's our code and base layers, which we can patch.
-      # The upstream-binary-heavy images (edge=Caddy, db=postgres+wal-g) are
-      # report-only: their findings live inside third-party Go binaries (gosu's
-      # stdlib, Caddy/wal-g module deps) whose fix is an upstream release, which
-      # Dependabot base-image / WALG_VERSION bumps pick up. Gating them would
-      # mean ignoring stdlib CVEs by ID — too broad, it'd mask them everywhere.
+      # Everything gates on OS packages, which an `apt-get`/`apk upgrade` or a
+      # base-image bump can always fix. backend and geoip additionally gate on
+      # their language/binary findings — those images hold our code.
+      #
+      # edge and db keep their binary findings report-only. Caddy's module deps
+      # need an upstream Caddy release, and wal-g self-reports a 2021 advisory
+      # fixed in its own 1.1: the build is far past that, but it stamps a
+      # v0.0.0-<date> pseudo-version, which Trivy reads as older. Gating either
+      # would mean suppressing CVE IDs globally to get there.
       # Accepted dormant findings in the gated images are listed in .trivyignore.
       - name: Install Trivy
         if: github.event_name == 'pull_request'
@@ -234,8 +236,12 @@ jobs:
           done
           for img in tayaway-edge tayaway-db; do
             ref="ghcr.io/${OWNER}/${img}:${SHA}"
-            echo "::group::${img} — all severities (report only, upstream binaries)"
-            trivy image --severity HIGH,CRITICAL,MEDIUM --ignore-unfixed \
+            echo "::group::${img} — OS packages, HIGH/CRITICAL (gating)"
+            trivy image --severity HIGH,CRITICAL --ignore-unfixed --pkg-types os \
+              --exit-code 1 --no-progress "$ref" || status=1
+            echo "::endgroup::"
+            echo "::group::${img} — binaries, all severities (report only)"
+            trivy image --severity HIGH,CRITICAL,MEDIUM --ignore-unfixed --pkg-types library \
               --exit-code 0 --no-progress "$ref"
             echo "::endgroup::"
           done
