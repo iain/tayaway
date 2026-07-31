@@ -2,7 +2,10 @@
 # that the web container mounts read-only at /app/backend/data. Pairs with a
 # monthly geoip.timer so refreshes are decoupled from app deploys; the web
 # stat()s the file per-lookup and picks up new versions without restarting.
-FROM alpine:3.24
+# Named so images.yml can exclude this stage from the registry layer cache
+# (no-cache-filters) — a cached layer would freeze the `apk upgrade` below at
+# whenever the base digest last moved, silently skipping security fixes.
+FROM alpine:3.24 AS geoip
 
 # apk upgrade pulls alpine security fixes for base packages the image scan
 # gates on; then add the runtime deps the loader needs.

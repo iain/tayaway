@@ -43,6 +43,18 @@ slsa = true
 [settings.ruby]
 compile = false
 
+# Base image for `mise oci build` (the toolchain image, which the backend
+# runtime stage is FROM). mise defaults to debian:bookworm-slim; bookworm left
+# regular Debian security support on 2026-07-11 and is now LTS-only, so pin
+# trixie explicitly — it also matches the postgres:18 runtime in
+# containers/Containerfile.db.
+#
+# NOTE: this file is hashed into the toolchain tag (.mise/tasks/toolchain/tag).
+# It has to be — a base change moves no lockfile, so without it the tag would
+# keep claiming to describe an image whose contents had changed underneath it.
+[oci]
+from = "debian:trixie-slim"
+
 # Tools that every subproject (and root scripts: prettier, Playwright)
 # needs. Ruby is here rather than in backend/mise.toml so it inherits
 # root → subproject (backend/mise.toml declares no Ruby and relies on

@@ -111,7 +111,7 @@ COPY backend/ ./
 # vendor/bundle, so those don't need separate vars. Env vars (not
 # .bundle/config) keep the runtime knobs explicit and independent of any
 # state from the gem-build stage.
-# LANG: bookworm-slim ships no default locale, leaving Ruby's default external
+# LANG: the slim toolchain base ships no default locale, leaving Ruby's external
 # encoding at US-ASCII — Rack::Builder.load_file then crashes on any non-ASCII
 # byte in a rackup file (bit the admin site's config.ru).
 ENV MISE_ENV=production \
@@ -140,8 +140,14 @@ CMD ["bundle", "exec", "falcon-host", "falcon.rb"]
 # to the backend container, terminates TLS via ACME in production.
 FROM caddy:2-alpine AS edge
 
-# Pull alpine security fixes for the base packages the image scan gates on.
-RUN apk upgrade --no-cache
+# Pull alpine security fixes for the base packages the image scan gates on,
+# then drop the curl the official caddy image installs. Caddy is a static Go
+# binary that never shells out to it, and nothing else in the stack does
+# either — the only quadlet HealthCmd is pg_isready on db, and the deploy /
+# self-deploy health polls curl from the host. Purging it takes libcurl,
+# c-ares, nghttp2 and brotli with it, which is the whole OS-package CVE
+# surface of this image; busybox wget stays for debugging.
+RUN apk upgrade --no-cache && apk del --purge curl
 
 COPY containers/Caddyfile /etc/caddy/Caddyfile
 COPY --from=frontend-build /build/frontend/dist /srv/dist

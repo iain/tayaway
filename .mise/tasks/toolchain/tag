@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
 #MISE description="Print the content hash of the toolchain inputs — used as the GHCR tag"
 
-# The toolchain image is rebuilt iff any tracked mise.lock changes — the
-# lockfile is the resolved source of truth for tool versions + checksums.
-# We don't hash mise.toml files: the only one with a [tools] section is
-# the root, and any [tools] change forces a lockfile change. CI sets
-# MISE_LOCKED=1 so a drifted lockfile fails the workflow instead of
+# The toolchain image is rebuilt iff any tracked mise.lock — or the root
+# mise.toml — changes. The lockfile is the resolved source of truth for tool
+# versions + checksums, and [tools] changes always move it. The root mise.toml
+# covers everything else `mise oci build` bakes in — [oci].from (the base
+# image), mount point, image user — none of which touch a lockfile. The tag has
+# to move with them, or an old git SHA resolves to whatever base happened to be
+# current at the last rebuild.
+#
+# The cost is that editing a task definition here also bumps the tag and
+# triggers a rebuild: a handful of extra builds a year, and skopeo dedupes the
+# blobs, so the push is metadata-only.
+#
+# CI sets MISE_LOCKED=1 so a drifted lockfile fails the workflow instead of
 # silently regenerating against a stale tag.
 #
 # `git ls-files` discovers subproject lockfiles automatically — no script
@@ -19,7 +27,7 @@
 
 set -euo pipefail
 
-git ls-files 'mise.lock' '**/mise.lock' |
+git ls-files 'mise.toml' 'mise.lock' '**/mise.lock' |
   sort |
   xargs sha256sum |
   sha256sum |
