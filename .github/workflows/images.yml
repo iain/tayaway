@@ -29,6 +29,7 @@ on:
       - "aube-workspace.yaml"
       - "package.json"
       - ".mise/tasks/toolchain/**"
+      - "mise.toml"
       - "**/mise.lock"
       - ".github/workflows/images.yml"
       # Containerised-e2e (below) reuses the images this workflow builds, so a
@@ -121,6 +122,12 @@ jobs:
           build-args: |
             TOOLCHAIN_IMAGE=ghcr.io/${{ github.repository_owner }}/tayaway-toolchain:${{ steps.toolchain.outputs.tag }}
             GIT_SHA=${{ github.sha }}
+          # See the note above the Trivy step: the runtime stage runs
+          # `apt-get upgrade`, and a cached layer freezes that upgrade at
+          # whenever the base digest last moved. Exclude just that stage from
+          # the cache so security fixes are actually picked up; the expensive
+          # gem-build / frontend-build stages still cache normally.
+          no-cache-filters: backend
           cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/tayaway-backend:buildcache
           cache-to: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && format('type=registry,ref=ghcr.io/{0}/tayaway-backend:buildcache,mode=max', github.repository_owner) || '' }}
 
@@ -141,6 +148,8 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
           build-args: |
             TOOLCHAIN_IMAGE=ghcr.io/${{ github.repository_owner }}/tayaway-toolchain:${{ steps.toolchain.outputs.tag }}
+          # Same reason as backend: `apk upgrade` must not be served from cache.
+          no-cache-filters: edge
           cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/tayaway-edge:buildcache
           cache-to: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && format('type=registry,ref=ghcr.io/{0}/tayaway-edge:buildcache,mode=max', github.repository_owner) || '' }}
 
@@ -162,6 +171,8 @@ jobs:
           tags: ghcr.io/${{ github.repository_owner }}/tayaway-geoip:${{ github.sha }}
           labels: |
             org.opencontainers.image.revision=${{ github.sha }}
+          # Same reason as backend: `apk upgrade` must not be served from cache.
+          no-cache-filters: geoip
           cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/tayaway-geoip:buildcache
           cache-to: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && format('type=registry,ref=ghcr.io/{0}/tayaway-geoip:buildcache,mode=max', github.repository_owner) || '' }}
 
@@ -180,6 +191,9 @@ jobs:
           # never overlap — push is main-only, load is PR-only.
           load: ${{ github.event_name == 'pull_request' }}
           tags: ghcr.io/${{ github.repository_owner }}/tayaway-db:${{ github.sha }}
+          # Same reason as backend: `apt-get upgrade` must not be served from
+          # cache. Only the runtime stage — the slow cgo wal-g build still caches.
+          no-cache-filters: db
           cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/tayaway-db:buildcache
           cache-to: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && format('type=registry,ref=ghcr.io/{0}/tayaway-db:buildcache,mode=max', github.repository_owner) || '' }}
 
