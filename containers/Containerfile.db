@@ -7,6 +7,8 @@
 # as its archive_command, and the backup / retention / restore-drill timers
 # `podman exec` this same binary.
 ARG WALG_VERSION=v3.0.8
+# gosu publishes no semver tags, so the module proxy only offers pseudo-versions.
+ARG GOSU_VERSION=v0.0.0-20260606051551-40506998e34a
 
 # ── wal-g build ───────────────────────────────────────────────────────────────
 # wal-g links libsodium and brotli via cgo, so the build needs their -dev
@@ -27,10 +29,32 @@ ENV GOEXPERIMENT=jsonv2
 # The go.mod `toolchain` line is a floor, not a ceiling, so the default
 # GOTOOLCHAIN=auto builds with the base image's Go. Bumping the base tag
 # (Dependabot tracks it) is what picks up stdlib security fixes.
+# v3.0.8 is the current wal-g release and its go.mod carries dependency
+# versions with fixable CVEs, so there is no upstream bump to wait for — patch
+# them here before the vendor step. The x/* three are a constraint chain
+# (text pulls net, net pulls crypto); bump them together or MVS rejects the set.
+RUN go get \
+      github.com/jackc/pgx/v5@v5.9.0 \
+      google.golang.org/grpc@v1.82.1 \
+      go.mongodb.org/mongo-driver@v1.17.7 \
+      golang.org/x/crypto@v0.53.0 \
+      golang.org/x/net@v0.56.0 \
+      golang.org/x/text@v0.39.0 \
+    && go mod tidy
 RUN make deps
 RUN make pg_build
 RUN echo "=== ldd ===" && ldd main/pg/wal-g || true; ./main/pg/wal-g --version
 RUN install -D -m 0755 main/pg/wal-g /out/wal-g
+
+# ── gosu build ────────────────────────────────────────────────────────────────
+# postgres:18 ships a gosu compiled against an older Go, and its docker-entrypoint
+# runs it on every start to drop from root to postgres. Rebuilding the same
+# upstream source here puts it on the base image's toolchain, which is where
+# stdlib security fixes arrive. CGO_ENABLED=0 keeps it static, matching the
+# binary it replaces.
+FROM docker.io/library/golang:1.26-trixie AS gosu-build
+ARG GOSU_VERSION
+RUN CGO_ENABLED=0 go install "github.com/tianon/gosu@${GOSU_VERSION}"
 
 # ── runtime ───────────────────────────────────────────────────────────────────
 # libsodium links statically into wal-g (ldd shows only libc), but wal-g still
@@ -48,3 +72,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
       ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=walg-build /out/wal-g /usr/local/bin/wal-g
+COPY --from=gosu-build /go/bin/gosu /usr/local/bin/gosu
+# The entrypoint depends on gosu working as root and as a target user; fail the
+# build here rather than at container start if the replacement misbehaves.
+RUN gosu --version && gosu nobody true
