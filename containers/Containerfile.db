@@ -7,6 +7,8 @@
 # as its archive_command, and the backup / retention / restore-drill timers
 # `podman exec` this same binary.
 ARG WALG_VERSION=v3.0.8
+# gosu publishes no semver tags, so the module proxy only offers pseudo-versions.
+ARG GOSU_VERSION=v0.0.0-20260606051551-40506998e34a
 
 # ── wal-g build ───────────────────────────────────────────────────────────────
 # wal-g links libsodium and brotli via cgo, so the build needs their -dev
@@ -32,6 +34,16 @@ RUN make pg_build
 RUN echo "=== ldd ===" && ldd main/pg/wal-g || true; ./main/pg/wal-g --version
 RUN install -D -m 0755 main/pg/wal-g /out/wal-g
 
+# ── gosu build ────────────────────────────────────────────────────────────────
+# postgres:18 ships a gosu compiled against an older Go, and its docker-entrypoint
+# runs it on every start to drop from root to postgres. Rebuilding the same
+# upstream source here puts it on the base image's toolchain, which is where
+# stdlib security fixes arrive. CGO_ENABLED=0 keeps it static, matching the
+# binary it replaces.
+FROM docker.io/library/golang:1.26-trixie AS gosu-build
+ARG GOSU_VERSION
+RUN CGO_ENABLED=0 go install "github.com/tianon/gosu@${GOSU_VERSION}"
+
 # ── runtime ───────────────────────────────────────────────────────────────────
 # libsodium links statically into wal-g (ldd shows only libc), but wal-g still
 # needs a CA bundle to verify TLS to OVH Object Storage — postgres:18 ships
@@ -48,3 +60,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
       ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=walg-build /out/wal-g /usr/local/bin/wal-g
+COPY --from=gosu-build /go/bin/gosu /usr/local/bin/gosu
+# The entrypoint depends on gosu working as root and as a target user; fail the
+# build here rather than at container start if the replacement misbehaves.
+RUN gosu --version && gosu nobody true
