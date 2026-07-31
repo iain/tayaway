@@ -29,6 +29,18 @@ ENV GOEXPERIMENT=jsonv2
 # The go.mod `toolchain` line is a floor, not a ceiling, so the default
 # GOTOOLCHAIN=auto builds with the base image's Go. Bumping the base tag
 # (Dependabot tracks it) is what picks up stdlib security fixes.
+# v3.0.8 is the current wal-g release and its go.mod carries dependency
+# versions with fixable CVEs, so there is no upstream bump to wait for — patch
+# them here before the vendor step. The x/* three are a constraint chain
+# (text pulls net, net pulls crypto); bump them together or MVS rejects the set.
+RUN go get \
+      github.com/jackc/pgx/v5@v5.9.0 \
+      google.golang.org/grpc@v1.79.3 \
+      go.mongodb.org/mongo-driver@v1.17.7 \
+      golang.org/x/crypto@v0.53.0 \
+      golang.org/x/net@v0.56.0 \
+      golang.org/x/text@v0.39.0 \
+    && go mod tidy
 RUN make deps
 RUN make pg_build
 RUN echo "=== ldd ===" && ldd main/pg/wal-g || true; ./main/pg/wal-g --version
