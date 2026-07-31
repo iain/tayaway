@@ -4,7 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { ref } from 'vue'
 import { useEventsNeedingRsvp } from './useEventsNeedingRsvp'
 import { useObjectPoolStore } from '@/stores'
-import { makeAttendance, makeEvent } from '@/test/factories'
+import { makeAttendance, makeDatePoll, makeEvent } from '@/test/factories'
 
 // The composable pulls currentUserId out via storeToRefs, so the mocked
 // store must already hold a ref.
@@ -67,6 +67,29 @@ describe('useEventsNeedingRsvp', () => {
 
     expect(eventsNeedingRsvp.value.map((e) => e.eventId)).toEqual([
       'evt-pending',
+    ])
+  })
+
+  it('skips events with an unresolved date poll but not those with a resolved one', () => {
+    seedEventWithAttendance('evt-polling', null)
+    seedEventWithAttendance('evt-poll-resolved', null)
+    const pool = useObjectPoolStore()
+    pool.importObjects(
+      [
+        makeDatePoll({ id: 'p1', eventId: 'evt-polling', status: 'open' }),
+        makeDatePoll({
+          id: 'p2',
+          eventId: 'evt-poll-resolved',
+          status: 'resolved',
+        }),
+      ],
+      { scope: Scope.workspace('test') }
+    )
+
+    const { eventsNeedingRsvp } = useEventsNeedingRsvp()
+
+    expect(eventsNeedingRsvp.value.map((e) => e.eventId)).toEqual([
+      'evt-poll-resolved',
     ])
   })
 

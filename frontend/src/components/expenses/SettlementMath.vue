@@ -25,10 +25,15 @@ const sortedBalances = computed((): BalanceRow[] => {
     if (amount < 0) creditors.push(row)
     else debtors.push(row)
   }
-  // Creditors first, largest-owed first (most negative first).
-  creditors.sort((a, b) => a.amount - b.amount)
+  // Creditors first, largest-owed first (most negative first). Ties by
+  // userId so the list doesn't depend on Map insertion order.
+  creditors.sort(
+    (a, b) => a.amount - b.amount || a.userId.localeCompare(b.userId)
+  )
   // Then debtors, largest-debt first.
-  debtors.sort((a, b) => b.amount - a.amount)
+  debtors.sort(
+    (a, b) => b.amount - a.amount || a.userId.localeCompare(b.userId)
+  )
   return [...creditors, ...debtors]
 })
 

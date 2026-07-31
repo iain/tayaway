@@ -47,6 +47,11 @@ module DatePolls
       def close_poll(event, poll, selected_date_range_id, membership)
         date_range = DateRange.find(selected_date_range_id)
         yes_voter_ids = []
+        reset = dates_changed?(event, date_range)
+        # Resolved before the revert: the poll-closed notice must reach the
+        # people whose answer is about to be cleared, not the freshly
+        # pending roster (doc/attendances.md ordering rule).
+        reset_notify_ids = reset ? going_member_ids(event.id) : []
 
         DB.transaction do
           DB[:date_polls].where(id: poll.id).update(
@@ -68,6 +73,8 @@ module DatePolls
                           .where(date_range_id: selected_date_range_id, response: "yes")
                           .select_map(:user_id)
 
+          reset_answers(event.id, yes_voter_ids) if reset
+
           updated_event = event.with(start_date: date_range.start_date, end_date: date_range.end_date)
 
           now = Time.now
@@ -80,13 +87,49 @@ module DatePolls
         end
 
         APP_LOGGER.info { "[DatePolls::Close] Poll #{poll.id} closed on event #{event.id} with date range #{selected_date_range_id}" }
-        DatePolls::OnClosed.call(event: event, date_range: date_range, yes_voter_ids: yes_voter_ids)
+        DatePolls::OnClosed.call(
+          event: event, date_range: date_range,
+          yes_voter_ids: yes_voter_ids, reset_user_ids: reset_notify_ids
+        )
 
         pool = PoolSerializer.new(membership: membership)
         pool.add(:event, [Event.find(event.id)])
         pool.add(:date_poll, [DatePoll.find(poll.id)])
         pool.add(:attendance, Attendance.for_event(event.id))
         Success({ objects: pool.to_a })
+      end
+
+      def going_member_ids(event_id)
+        Attendance.for_event(event_id)
+                  .select { |a| a.going? && !a.guest? }
+                  .map { |a| a.user_id.to_s }
+      end
+
+      # Mirrors Events::Update#dates_changed?: only a real change clears the
+      # answers; a poll that sets dates for the first time is not a change.
+      def dates_changed?(event, date_range)
+        if event.start_date.nil? || event.end_date.nil?
+          false
+        else
+          [date_range.start_date, date_range.end_date] != [event.start_date, event.end_date]
+        end
+      end
+
+      # Keep the people, clear the answers (doc/attendances.md): when the
+      # winning range replaces existing dates, every row — member and guest
+      # alike — reverts to pending, except yes-voters on the winner, whose
+      # vote is their answer for the new window (mark_voter_going upserts
+      # them right after, keeping their day set). Per-row broadcasts; the
+      # pool never rewrites children on parent updates.
+      def reset_answers(event_id, except_user_ids)
+        except = except_user_ids.map(&:to_s)
+        ids = Attendance.for_event(event_id)
+                        .reject { |a| a.user_id && except.include?(a.user_id.to_s) }
+                        .map(&:id)
+        if ids.any?
+          DB[:attendances].where(id: ids).update(status: "pending", days: nil, updated_at: Time.now)
+          ids.each { |aid| Broadcaster.object_changed("attendance", aid) }
+        end
       end
 
       # Server-initiated going transition for a yes voter: upsert their

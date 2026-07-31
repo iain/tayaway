@@ -53,7 +53,10 @@ const settlements = computed(() =>
   pool
     .getAll('settlement')
     .filter((s) => s.eventId === props.event.id)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .sort(
+      (a, b) =>
+        b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id)
+    )
 )
 
 const unsettledExpenseCount = computed(
@@ -77,9 +80,12 @@ function showDeleteSettlement(settlement: PoolSettlement): boolean {
 }
 
 function transfersForSettlement(settlementId: string) {
+  // Pool order is arrival order, which differs between IndexedDB hydration,
+  // full sync, and live broadcasts — sort so the list is stable.
   return pool
     .getAll('settlementTransfer')
     .filter((t) => t.settlementId === settlementId)
+    .sort((a, b) => b.amount - a.amount || a.id.localeCompare(b.id))
 }
 
 function activeTransfersForSettlement(settlementId: string) {
@@ -483,6 +489,7 @@ async function handlePaidClick(
         <div
           v-for="transfer in transfersForSettlement(settlement.id)"
           :key="transfer.id"
+          data-testid="transfer-row"
           class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3"
           :class="{
             'opacity-60': transfer.supersededAt,

@@ -147,6 +147,23 @@ RSpec.describe Settlements::BalanceMath do
     end
   end
 
+  describe ".minimize_transfers" do
+    it "breaks balance ties by user id so output is independent of hash order" do
+      entries = { "bob" => 50.0, "alice" => 50.0, "dave" => -50.0, "carol" => -50.0 }
+
+      forward = described_class.minimize_transfers(entries)
+      reversed = described_class.minimize_transfers(entries.to_a.reverse.to_h)
+
+      expect(forward).to eq(reversed)
+      expect(forward).to eq(
+        [
+          { from_user_id: "alice", to_user_id: "carol", amount: 50.0 },
+          { from_user_id: "bob", to_user_id: "dave", amount: 50.0 }
+        ]
+      )
+    end
+  end
+
   describe ".snapshot_attendances" do
     it "resolves member and guest rows to effective days and billing users" do
       workspace = TestFactories.workspace

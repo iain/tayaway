@@ -2,6 +2,7 @@ import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import { useObjectPoolStore } from '@/stores'
+import { isPollActive } from '@/utils/poll'
 import { useNow } from './useNow'
 
 export interface RsvpEventItem {
@@ -33,6 +34,15 @@ export function useEventsNeedingRsvp() {
         .map((a) => a.eventId)
     )
 
+    // An unresolved poll on a dated event means the dates are up for
+    // revision and closing the poll resets RSVPs — vote first, RSVP later.
+    const activePollEventIds = new Set(
+      pool
+        .getAll('datePoll')
+        .filter((p) => isPollActive(p))
+        .map((p) => p.eventId)
+    )
+
     const items: RsvpEventItem[] = []
     const currentNow = now.value
 
@@ -40,6 +50,7 @@ export function useEventsNeedingRsvp() {
       if (!event.startDate || !event.endDate) continue
       if (new Date(event.endDate) < currentNow) continue
       if (answeredEventIds.has(event.id)) continue
+      if (activePollEventIds.has(event.id)) continue
 
       items.push({
         eventId: event.id,

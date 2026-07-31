@@ -126,6 +126,39 @@ RSpec.describe Users::UpdateProfile do
     expect(result.failure.message).to eq("Invalid birthday format")
   end
 
+  # Ruby's Date.parse would read "02/08/1990" as DD/MM — the opposite of what
+  # an MM/DD-locale client meant. Only unambiguous ISO 8601 may enter the DB.
+  it "rejects ambiguous non-ISO birthday formats" do
+    user = TestFactories.user(name: "Test")
+
+    result = described_class.call(
+      user_id: user[:id],
+      current_user_id: user[:id],
+      name: "Test",
+      birthday: "02/08/1990"
+    )
+
+    expect(result.failure?).to be true
+    expect(result.failure.message).to eq("Invalid birthday format")
+  end
+
+  it "normalizes the stored birthday to ISO 8601" do
+    workspace = TestFactories.workspace
+    user = TestFactories.user(name: "Test")
+    TestFactories.workspace_membership(workspace: workspace, user: user)
+
+    result = described_class.call(
+      user_id: user[:id],
+      current_user_id: user[:id],
+      name: "Test",
+      birthday: "1990-2-8"
+    )
+
+    expect(result.success?).to be true
+    stored = DB[:users].where(id: user[:id]).get(:birthday)
+    expect(Encryption.decrypt(stored, user_id: user[:id])).to eq("1990-02-08")
+  end
+
   it "updates location with coordinates" do
     workspace = TestFactories.workspace
     user = TestFactories.user(name: "Test")

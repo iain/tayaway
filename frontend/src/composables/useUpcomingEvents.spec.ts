@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useObjectPoolStore } from '@/stores/objectPool'
 import { useAuthStore } from '@/stores/auth'
-import { makeEvent, makeAttendance } from '@/test/factories'
+import { makeEvent, makeAttendance, makeDatePoll } from '@/test/factories'
 import { useUpcomingEvents } from './useUpcomingEvents'
 
 const TODAY = new Date('2026-06-02T12:00:00Z')
@@ -115,6 +115,36 @@ describe('useUpcomingEvents', () => {
 
     expect(byId.get('responded')!.needsRsvp).toBe(false)
     expect(byId.get('no-response')!.needsRsvp).toBe(true)
+  })
+
+  it('suppresses needsRsvp while a date poll is unresolved — voting is the real CTA', () => {
+    const pool = useObjectPoolStore()
+    signIn('user-1')
+    pool.importObjects(
+      [
+        makeEvent({
+          id: 'polling',
+          startDate: '2026-06-10',
+          endDate: '2026-06-12',
+        }),
+        makeEvent({
+          id: 'resolved',
+          startDate: '2026-07-01',
+          endDate: '2026-07-02',
+        }),
+        makeDatePoll({ id: 'p1', eventId: 'polling', status: 'expired' }),
+        makeDatePoll({ id: 'p2', eventId: 'resolved', status: 'resolved' }),
+      ],
+      { scope: Scope.workspace('test') }
+    )
+
+    const { upcomingEvents } = useUpcomingEvents()
+    const byId = new Map(upcomingEvents.value.map((e) => [e.eventId, e]))
+
+    expect(byId.get('polling')!.needsRsvp).toBe(false)
+    expect(byId.get('polling')!.hasActivePoll).toBe(true)
+    expect(byId.get('resolved')!.needsRsvp).toBe(true)
+    expect(byId.get('resolved')!.hasActivePoll).toBe(false)
   })
 
   it('counts going attendances per event', () => {

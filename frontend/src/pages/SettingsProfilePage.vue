@@ -3,7 +3,8 @@ import { computed, ref, nextTick, useTemplateRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import { UserIcon, XCircleIcon } from '@heroicons/vue/24/outline'
-import { formatBirthday, localIsoDate } from '@/utils/date'
+import { formatBirthday, formatDateDisplay, localIsoDate } from '@/utils/date'
+import { useLocale } from '@/composables/useLocale'
 import BaseCard from '@/components/common/BaseCard.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import DefinitionRow from '@/components/common/DefinitionRow.vue'
@@ -29,6 +30,7 @@ interface ProfileFieldValues {
 
 const authStore = useAuthStore()
 const { user } = storeToRefs(authStore)
+const { locale } = useLocale()
 
 // Per-field edit state. Multiple editors can be open at once — opening a new
 // one never silently discards another. The user got each form there by an
@@ -301,7 +303,9 @@ async function clearAddress(): Promise<void> {
           :editing="editingFields.has('birthday')"
           @edit="openField('birthday')"
         >
-          {{ user?.birthday ? formatBirthday(user.birthday) : 'Not set' }}
+          {{
+            user?.birthday ? formatBirthday(user.birthday, locale) : 'Not set'
+          }}
           <template #editor>
             <div>
               <form
@@ -344,6 +348,13 @@ async function clearAddress(): Promise<void> {
                   <XCircleIcon class="size-5" />
                 </IconButton>
               </form>
+              <p
+                v-if="editBirthday"
+                data-testid="birthday-preview"
+                class="text-ink-muted mt-1 text-sm"
+              >
+                {{ formatDateDisplay(editBirthday, locale) }}
+              </p>
               <p
                 v-if="saveErrors.get('birthday')"
                 role="alert"
