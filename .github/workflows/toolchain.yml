@@ -60,7 +60,7 @@ jobs:
       # MISE_LOCKED_VERIFY_PROVENANCE forces mise to re-verify SLSA /
       # GitHub attestations and the lockfile checksums against the
       # downloads, instead of trusting the lockfile's prior verdict.
-      - uses: jdx/mise-action@v4
+      - uses: jdx/mise-action@v4.2.3
         env:
           MISE_LOCKED: "1"
           MISE_LOCKED_VERIFY_PROVENANCE: "1"

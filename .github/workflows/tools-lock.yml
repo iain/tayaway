@@ -45,7 +45,7 @@ jobs:
 
       # install: false — we want the mise binary, not the toolchain. `lock
       # --bump` resolves versions over HTTP and installs nothing.
-      - uses: jdx/mise-action@v4
+      - uses: jdx/mise-action@v4.2.3
         with:
           install: false
           cache: false
