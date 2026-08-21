@@ -17,6 +17,7 @@ import {
   rankDateRanges,
 } from '@/utils/poll'
 import VoteSummaryBar from '@/components/votes/VoteSummaryBar.vue'
+import VoteBreakdown from '@/components/votes/VoteBreakdown.vue'
 import ClosePollModal from './ClosePollModal.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
@@ -201,6 +202,11 @@ function handleVote(): void {
               </span>
             </div>
             <VoteSummaryBar :summary="dateRange.voteSummary" />
+            <VoteBreakdown
+              :votes="dateRange.votes"
+              :members="event.workspace?.members ?? []"
+              class="border-line-faint mt-3 border-t pt-3"
+            />
           </div>
         </div>
 
