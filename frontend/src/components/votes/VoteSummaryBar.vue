@@ -20,6 +20,13 @@ const percentages = computed(() => {
 })
 </script>
 
+<!-- The segments deliberately stay on the bright 500 ramp while VoteBreakdown's
+     glyphs use the deeper `state-*-ink` tokens. They are different jobs: a 16px
+     glyph needs weight to read against `surface`, an 8px band does not. Swapping
+     the band to the ink tier does not help either — it only moves the
+     indistinguishable pair from green|yellow (1.05:1) to yellow|red (1.05:1),
+     and darkens the bar for nothing. Segment order is fixed and the counts are
+     spelled out below, so WCAG 1.4.11 is satisfied by the text, not the hues. -->
 <template>
   <div>
     <div v-if="hasVotes" class="bg-line flex h-2 overflow-hidden rounded-full">

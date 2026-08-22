@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/vue/24/outline'
+import { ref, computed, watch, useId } from 'vue'
+import { ChevronDownIcon } from '@heroicons/vue/24/outline'
 import type { VoteResponse } from '@/types/pool'
-import type { HydratedDateRange } from '@/composables/useHydratedEvent'
+import type {
+  HydratedDateRange,
+  HydratedMember,
+} from '@/composables/useHydratedEvent'
 import { useVotesStore } from '@/stores/votes'
 import VoteSummaryBar from './VoteSummaryBar.vue'
-import VotersList from './VotersList.vue'
+import VoteBreakdown from './VoteBreakdown.vue'
 import FormTextarea from '@/components/form/FormTextarea.vue'
 import { TEXT_LIMITS } from '@/constants/limits'
 import DateRangeDisplay from '@/components/common/DateRangeDisplay.vue'
@@ -13,16 +16,26 @@ import AppButton from '@/components/common/AppButton.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
 import TextButton from '@/components/common/TextButton.vue'
 
-const props = defineProps<{
-  dateRange: HydratedDateRange
-  eventId: string
-  currentUserId: string | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    dateRange: HydratedDateRange
+    eventId: string
+    currentUserId: string | null
+    members?: HydratedMember[]
+  }>(),
+  { members: () => [] }
+)
 
 const votesStore = useVotesStore()
 
 const loading = ref(false)
 const showVoters = ref(false)
+const votersId = useId()
+
+// Selected vote fills sit at the -700/-800 steps, not the -500/-600 the rest of
+// the app reaches for: white ink on this regraded ramp measured 1.80:1 on
+// yellow-500 and 2.73:1 on green-600, both well under WCAG AA 4.5:1. The chosen
+// steps land in a 6.1-6.5:1 band so the three read as one family.
 const comment = ref('')
 const showCommentInput = ref(false)
 
@@ -115,17 +128,26 @@ function toggleCommentInput() {
 
         <!-- Voters List Toggle -->
         <div class="border-line mt-3 border-t pt-3">
-          <TextButton @click="showVoters = !showVoters">
-            <component
-              :is="showVoters ? ChevronUpIcon : ChevronDownIcon"
-              class="size-4"
+          <TextButton
+            :aria-expanded="showVoters"
+            :aria-controls="votersId"
+            @click="showVoters = !showVoters"
+          >
+            <ChevronDownIcon
+              class="size-4 shrink-0 transition-transform"
+              :class="showVoters ? '' : '-rotate-90'"
+              aria-hidden="true"
             />
             {{ showVoters ? 'Hide' : 'Show' }} votes ({{
               dateRange.voteSummary.total
             }})
           </TextButton>
-          <div v-if="showVoters" class="mt-3">
-            <VotersList :votes="dateRange.votes" />
+          <div v-show="showVoters" :id="votersId" class="mt-3">
+            <VoteBreakdown
+              :votes="dateRange.votes"
+              :members="members"
+              comments="inline"
+            />
           </div>
         </div>
       </div>
@@ -141,7 +163,7 @@ function toggleCommentInput() {
             class="focus-visible:outline-focus flex-1 cursor-pointer rounded-md px-3 py-2 text-center text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             :class="[
               isSelected('yes')
-                ? 'bg-green-600 text-white'
+                ? 'bg-green-800 text-white'
                 : 'bg-btn-secondary-fill text-btn-secondary-ink hover:bg-state-success-fill hover:text-state-success-ink',
             ]"
             @click="handleVote('yes')"
@@ -155,7 +177,7 @@ function toggleCommentInput() {
             class="focus-visible:outline-focus flex-1 cursor-pointer rounded-md px-3 py-2 text-center text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             :class="[
               isSelected('preferably_not')
-                ? 'bg-yellow-500 text-white'
+                ? 'bg-yellow-800 text-white'
                 : 'bg-btn-secondary-fill text-btn-secondary-ink hover:bg-state-warning-fill hover:text-state-warning-ink',
             ]"
             @click="handleVote('preferably_not')"
@@ -169,7 +191,7 @@ function toggleCommentInput() {
             class="focus-visible:outline-focus flex-1 cursor-pointer rounded-md px-3 py-2 text-center text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             :class="[
               isSelected('no')
-                ? 'bg-red-600 text-white'
+                ? 'bg-red-700 text-white'
                 : 'bg-btn-secondary-fill text-btn-secondary-ink hover:bg-state-danger-fill hover:text-state-danger-ink',
             ]"
             @click="handleVote('no')"
