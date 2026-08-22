@@ -12,7 +12,7 @@ import type { HydratedDateRange } from '@/composables/useHydratedEvent'
 import { useCalendar } from '@/composables/useCalendar'
 import DateRangeModal from '@/components/events/DateRangeModal.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
-import VotersList from '@/components/votes/VotersList.vue'
+import VoteBreakdown from '@/components/votes/VoteBreakdown.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import IconButton from '@/components/common/IconButton.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
@@ -188,13 +188,23 @@ async function deleteRange(dateRangeId: string): Promise<void> {
           />
         </p>
         <p class="text-ink-muted mb-4 text-sm">
-          This date range has
-          {{ confirmingDateRange.voteSummary.total }}
-          {{ confirmingDateRange.voteSummary.total === 1 ? 'vote' : 'votes' }}.
-          Removing it will delete all votes below.
+          <template v-if="confirmingDateRange.voteSummary.total === 0">
+            Nobody has voted on this date range yet.
+          </template>
+          <template v-else>
+            This date range has
+            {{ confirmingDateRange.voteSummary.total }}
+            {{
+              confirmingDateRange.voteSummary.total === 1 ? 'vote' : 'votes'
+            }}. Removing it deletes them.
+          </template>
         </p>
 
-        <VotersList :votes="confirmingDateRange.votes" />
+        <VoteBreakdown
+          v-if="confirmingDateRange.votes.length > 0"
+          :votes="confirmingDateRange.votes"
+          comments="inline"
+        />
 
         <div class="mt-6 flex justify-end gap-3">
           <AppButton

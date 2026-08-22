@@ -17,6 +17,7 @@ import {
   rankDateRanges,
 } from '@/utils/poll'
 import VoteSummaryBar from '@/components/votes/VoteSummaryBar.vue'
+import VoteBreakdown from '@/components/votes/VoteBreakdown.vue'
 import ClosePollModal from './ClosePollModal.vue'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import BaseCard from '@/components/common/BaseCard.vue'
@@ -137,7 +138,9 @@ function handleVote(): void {
             <template
               v-if="currentUserVoteStatus.voted === currentUserVoteStatus.total"
             >
-              <CheckCircleSolidIcon class="inline size-4 text-green-500" />
+              <CheckCircleSolidIcon
+                class="text-state-success-ink inline size-4"
+              />
               You've voted on all {{ currentUserVoteStatus.total }} date options
             </template>
             <template v-else>
@@ -152,6 +155,12 @@ function handleVote(): void {
           <p class="text-ink-muted">No date ranges have been added yet.</p>
         </div>
 
+        <!-- Once the poll is resolved the losing options recede via a sunken
+             surface rather than `opacity-50`, which dropped their text to
+             3.37:1 (ink) and 2.33:1 (ink-muted). No alpha below 0.85 clears AA,
+             and 0.85 reads as no de-emphasis at all, so the signal moves to the
+             background where it costs no legibility. The winner still carries
+             its own fill and an explicit "Winner" label. -->
         <div v-else class="space-y-3">
           <div
             v-for="(dateRange, index) in rankedDateRanges"
@@ -168,7 +177,7 @@ function handleVote(): void {
               'border-line': !isPollResolved(poll)
                 ? index !== 0 || dateRange.voteSummary.yes === 0
                 : dateRange.id !== poll.selectedDateRangeId,
-              'opacity-50':
+              'bg-surface-sunken':
                 isPollResolved(poll) &&
                 dateRange.id !== poll.selectedDateRangeId,
             }"
@@ -201,6 +210,14 @@ function handleVote(): void {
               </span>
             </div>
             <VoteSummaryBar :summary="dateRange.voteSummary" />
+            <!-- The summary bar already says "No votes yet"; repeating it per
+                 option would just add noise down a list of dates. -->
+            <VoteBreakdown
+              v-if="dateRange.votes.length > 0"
+              :votes="dateRange.votes"
+              :members="event.workspace?.members ?? []"
+              class="border-line-faint mt-3 border-t pt-3"
+            />
           </div>
         </div>
 

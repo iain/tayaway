@@ -97,6 +97,7 @@ async function handleReopenConfirm(deadline: string): Promise<void> {
           :key="dateRange.id"
           :date-range="dateRange"
           :event-id="event.id"
+          :members="event.workspace?.members ?? []"
           :current-user-id="currentUserId"
         />
       </div>
