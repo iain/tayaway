@@ -5,6 +5,11 @@ require "roda"
 class App < Roda
   include ResultHandler
 
+  # Outermost of the app's own middleware, so it also covers the `request.halt`
+  # triplets every auth / CSRF / protocol-version refusal returns. See
+  # lib/security_headers.rb for why these moved out of the edge's vhost.
+  use SecurityHeaders
+
   plugin :json
   plugin :json_parser
   plugin :hash_routes

@@ -1,0 +1,157 @@
+# Caddy config for the `static` container — tayaway's built SPA, served on
+# plain HTTP behind the platform's shared edge.
+#
+# Why this file exists separately from containers/Caddyfile: the edge that
+# terminates TLS for this box is the platform's, not tayaway's, and lives in
+# the private infra repo. It routes /api, /ws and /health to the backend and
+# everything else here. What stays tayaway's is what only tayaway's build can
+# know — the Content-Security-Policy the frontend bundle actually needs, the
+# cache policy for the filenames Vite emits, and the SPA fallback. Those move
+# with the artefact rather than drifting from it in someone else's repo.
+#
+# The split is by concern, not by file: routing, TLS and transport headers
+# (HSTS) are the platform's; application policy headers are set here. There is
+# deliberately no Strict-Transport-Security below — this container never
+# terminates TLS, and an HSTS header here would be the tell that the boundary
+# had quietly moved back.
+
+{
+	# Nothing dials this container's admin API — the config is baked into the
+	# image, so there is no reload path to keep open.
+	admin off
+
+	# The listener below is a bare port with no hostname, so ACME would never
+	# fire anyway; saying so explicitly keeps it that way if the address is
+	# ever given a name.
+	auto_https off
+
+	# Bound shutdown drain, same reasoning as the edge: without it Caddy waits
+	# forever for active connections and a deploy-time stop hangs until
+	# podman's 10s SIGKILL, which systemd records as a unit failure and pages.
+	grace_period 5s
+}
+
+# Plain HTTP on a fixed container port. The host-side port is the quadlet's
+# business (PublishPort), so this never needs to vary.
+:8080 {
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(self)"
+		# Severs window.opener between this origin and any popup it opens,
+		# and puts the app in its own browsing-context group — the standard
+		# mitigation for cross-window scripting and Spectre-style probing.
+		# Safe here: the one popup we open already passes `noopener`, and
+		# nothing embeds us (frame-ancestors 'none'). Deliberately *not*
+		# paired with COEP, which would require CORP headers on the
+		# OpenStreetMap tiles and Photon responses we don't control.
+		Cross-Origin-Opener-Policy "same-origin"
+		# Names the groups the CSPs' `report-to` directives point at. Relative
+		# URLs are resolved against the document (Reporting API spec), so this
+		# stays environment-agnostic — and the endpoint is same-origin, which
+		# the spec's potentially-trustworthy check needs. It resolves to the
+		# backend through the edge's /api route, not to this container. The two
+		# groups differ only in the ?d= hint, which tells the endpoint which
+		# policy is talking when the report itself doesn't say.
+		Reporting-Endpoints `csp="/api/csp-report", csp-candidate="/api/csp-report?d=report"`
+		# The enforced policy (issues #315/#317). Both reporting directives are
+		# set on purpose — `report-uri` is deprecated but is what Firefox and
+		# Safari still implement, `report-to` is what Chrome honours. They post
+		# different payload shapes to the same endpoint; CspReports::Record
+		# normalises both, and the admin dashboard's CSP page lists what came
+		# in.
+		#
+		# `base-uri 'none'` (not 'self'): the app has no <base> element, so
+		# nothing legitimate sets one, and 'none' stops an injected <base>
+		# from re-pointing every relative URL on the page. `frame-src 'none'`
+		# likewise — there are no iframes, and without it the directive would
+		# fall back to default-src 'self' and permit one.
+		#
+		# `style-src 'unsafe-inline'` is the last loosening left, and it is
+		# now believed unnecessary — the static `style=` attributes it existed
+		# for are gone (MembersPage.vue's birthday delays moved to CSS), and
+		# Vue's `:style` bindings go through the CSSOM, which CSP doesn't
+		# police. Belief isn't evidence, so it stays here while the Report-Only
+		# policy below tests its removal against real traffic. Promote by
+		# deleting `'unsafe-inline'` from this line once the admin CSP page
+		# shows no `report`-disposition style-src violations for a week or two.
+		# `script-src` has never had such an escape hatch and must not grow one.
+		#
+		# EXTRA_CONNECT_SRC lets staging / preview environments append their
+		# own backend origin to connect-src (e.g. " wss://staging.tayaway.nl"
+		# — note the leading space) without forking this config. Empty when
+		# unset, so production's CSP matches the legacy nginx one.
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' wss://tayaway.nl https://photon.komoot.io{$EXTRA_CONNECT_SRC}; img-src 'self' data: blob: https://*.tile.openstreetmap.org; font-src 'self'; object-src 'none'; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'self'; frame-src 'none'; frame-ancestors 'none'; upgrade-insecure-requests; report-uri /api/csp-report; report-to csp"
+		# The candidate policy, reported but never blocking. This is the only
+		# way to test a *tightening*: the enforced policy above can't report
+		# on what it permits, so a violation here is the evidence that the
+		# corresponding directive can't be tightened yet. Two steps ahead of
+		# production, and they land in the admin page's `report` bucket:
+		#
+		#   style-src without 'unsafe-inline'      — see above. Leaflet is the
+		#     one library that styles heavily, and it does all of it through
+		#     the CSSOM (no setAttribute('style'), no cssText), so the map is
+		#     not what this is waiting on.
+		#   require-trusted-types-for 'script'     — kills the DOM-XSS sinks
+		#     (innerHTML and friends) outright. No v-html anywhere in the
+		#     frontend, but expect this one to report: Leaflet's inlineSvg
+		#     feature detection assigns innerHTML at module load with no
+		#     try/catch, so enforcing this today would reject StaticMap's
+		#     dynamic import and the event map would simply never appear.
+		#     Promoting it needs a Trusted Types policy shim first — the
+		#     reports are here to confirm the shape of the problem, and to
+		#     catch whatever else in Vue's runtime trips it.
+		#
+		# When both stay quiet, fold them into the enforced policy and drop
+		# this header. Keep the two policies otherwise identical, or the
+		# reports stop being a clean A/B.
+		Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' wss://tayaway.nl https://photon.komoot.io{$EXTRA_CONNECT_SRC}; img-src 'self' data: blob: https://*.tile.openstreetmap.org; font-src 'self'; object-src 'none'; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'self'; frame-src 'none'; frame-ancestors 'none'; require-trusted-types-for 'script'; report-uri /api/csp-report?d=report; report-to csp-candidate"
+	}
+
+	# The SPA. `handle` and `route` are both kept even though nothing else
+	# competes for a path here — this block is a verbatim lift of the one that
+	# lived in the edge's Caddyfile, and keeping its shape is what lets the
+	# move be reviewed as "nothing changed".
+	#
+	# The comment carried over with it claimed `route` was load-bearing: that
+	# without it Caddy sorts header directives canonically and the
+	# unconditional Cache-Control overwrites the matched one. On Caddy 2.11.4
+	# that is no longer true — containers/static-smoke.sh passes unchanged with
+	# the `route` wrapper removed, asset responses included. It is kept for
+	# fidelity, not because the ordering depends on it, and it can go the next
+	# time this block is edited for its own reasons.
+	handle {
+		root * /srv/dist
+		route {
+			# Vite emits content-hashed filenames under /assets — safe to
+			# mark immutable. /assets/* always exists on disk, so try_files
+			# never rewrites; this matcher fires reliably at request time.
+			@assets path /assets/*
+			header @assets Cache-Control "public, immutable, max-age=31536000"
+
+			# Everything else gets no-cache. `?` means "set only if absent",
+			# so the @assets directive above isn't overwritten. This also
+			# applies to /index.html after try_files rewrites unknown
+			# client-side routes (e.g. /events/<id>) — sidesteps Caddy's
+			# request-phase matcher evaluation, which would see the
+			# original URI, not /index.html.
+			header ?Cache-Control "no-cache"
+
+			# Real file → fall back to /index.html so client-side routes
+			# still serve the Vue shell (frontend uses createWebHistory).
+			# Canonical SPA pattern from the Caddy docs.
+			try_files {path} /index.html
+
+			# Serve the precompressed .br / .gz siblings emitted by
+			# vite-plugin-compression2. Brotli first, gzip fallback. If a
+			# sibling is missing, Caddy falls back to the original and the
+			# `encode` directive at the top compresses on the fly.
+			file_server {
+				precompressed br gzip
+			}
+		}
+	}
+}

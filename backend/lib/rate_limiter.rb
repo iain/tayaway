@@ -132,7 +132,12 @@ module RateLimiter
       matched = req.env["rack.attack.matched"]
       discriminator = req.env["rack.attack.match_discriminator"]
       APP_LOGGER.warn { "[RateLimiter] Throttled #{matched} for #{discriminator}" }
-      [429, { "Content-Type" => "application/json" }, [{ error: "Rate limit exceeded. Try again later." }.to_json]]
+      # Rack::Attack runs outside Roda, so App's SecurityHeaders middleware
+      # never sees this response — take the headers from the same constant
+      # rather than letting the throttled path drift into being the one
+      # unhardened thing the internet can reach unauthenticated.
+      headers = { "Content-Type" => "application/json" }.merge(SecurityHeaders::HEADERS)
+      [429, headers, [{ error: "Rate limit exceeded. Try again later." }.to_json]]
     end
   end
 end
