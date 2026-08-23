@@ -138,6 +138,13 @@ CMD ["bundle", "exec", "falcon-host", "falcon.rb"]
 # ── edge ────────────────────────────────────────────────────────────────────
 # Caddy fronts the stack: serves the built SPA, reverse-proxies /api and /ws
 # to the backend container, terminates TLS via ACME in production.
+#
+# On its way out. The box's shared edge terminates TLS for tayaway, headscale
+# and Gatus alike, so it is the platform's and moves to a stock caddy image
+# with an infra-owned config; the SPA half of this stage becomes `static`
+# below. This stage stays until that cutover lands, because the running box
+# still self-deploys ghcr.io/iain/tayaway-edge:<sha> on every main commit —
+# retiring it before the box stops pulling it would break every deploy.
 FROM caddy:2-alpine AS edge
 
 # Pull alpine security fixes for the base packages the image scan gates on,
@@ -154,3 +161,29 @@ COPY --from=frontend-build /build/frontend/dist /srv/dist
 
 EXPOSE 8080
 EXPOSE 8443
+
+# ── static ──────────────────────────────────────────────────────────────────
+# tayaway's built SPA as its own image, on plain HTTP behind the platform's
+# shared edge. This is what makes tayaway a tenant rather than the landlord:
+# one image, one port, one vhost snippet — structurally identical to headscale
+# and Gatus — and, more to the point, the shared edge stops being redeployed
+# every time this app ships a frontend change.
+#
+# containers/Caddyfile.static explains which headers stay tayaway's and why.
+# containers/static-smoke.sh asserts the result and runs against this image in
+# CI.
+#
+# The two `apk` lines are duplicated from `edge` above rather than hoisted into
+# a shared base stage on purpose: images.yml pins `no-cache-filters` per stage
+# name so the upgrade is never served from cache, and a shared stage would mean
+# re-pointing that filter for both images at once — a silent re-freeze of
+# security upgrades if it were got wrong. The duplication disappears with the
+# edge stage.
+FROM caddy:2-alpine AS static
+
+RUN apk upgrade --no-cache && apk del --purge curl
+
+COPY containers/Caddyfile.static /etc/caddy/Caddyfile
+COPY --from=frontend-build /build/frontend/dist /srv/dist
+
+EXPOSE 8080

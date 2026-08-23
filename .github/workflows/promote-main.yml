@@ -68,7 +68,7 @@ jobs:
           OWNER: ${{ github.repository_owner }}
           SHA: ${{ steps.sha.outputs.sha }}
         run: |
-          for img in tayaway-backend tayaway-edge tayaway-geoip; do
+          for img in tayaway-backend tayaway-edge tayaway-static tayaway-geoip; do
             ref="ghcr.io/${OWNER}/${img}:${SHA}"
             ok=
             for i in $(seq 1 60); do
@@ -89,7 +89,7 @@ jobs:
           OWNER: ${{ github.repository_owner }}
           SHA: ${{ steps.sha.outputs.sha }}
         run: |
-          for img in tayaway-backend tayaway-edge tayaway-geoip; do
+          for img in tayaway-backend tayaway-edge tayaway-static tayaway-geoip; do
             echo "promoting ${img}:main -> ${SHA}"
             docker buildx imagetools create \
               --tag "ghcr.io/${OWNER}/${img}:main" \

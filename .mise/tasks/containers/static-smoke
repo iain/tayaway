@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+#MISE description="Smoke-test the static container's Caddy config against a fixture dist"
+
+# Fast inner loop for containers/Caddyfile.static: builds a throwaway image
+# from that config plus a handful of stub files and asserts the headers, cache
+# policy, SPA fallback and precompressed siblings. No toolchain image and no
+# frontend build needed — the thing under test is the Caddyfile.
+#
+# CI runs the same script against the real image (IMAGE=… in images.yml).
+
+set -euo pipefail
+
+exec ./containers/static-smoke.sh "$@"

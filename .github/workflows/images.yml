@@ -153,6 +153,31 @@ jobs:
           cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/tayaway-edge:buildcache
           cache-to: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && format('type=registry,ref=ghcr.io/{0}/tayaway-edge:buildcache,mode=max', github.repository_owner) || '' }}
 
+      # tayaway's SPA as its own image, so the platform's shared edge stops
+      # being rebuilt and redeployed every time this app ships a frontend
+      # change. Pulls the same frontend-build stage the edge does, so building
+      # both duplicates no work.
+      - name: Build and push static
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: containers/Containerfile
+          target: static
+          push: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+          # PR-only: load into the local daemon for the smoke test and the
+          # Trivy scan below (nothing is pushed on PRs).
+          load: ${{ github.event_name == 'pull_request' }}
+          # Only :<sha> here; :main is moved by promote-main.yml after CI.
+          tags: ghcr.io/${{ github.repository_owner }}/tayaway-static:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+          build-args: |
+            TOOLCHAIN_IMAGE=ghcr.io/${{ github.repository_owner }}/tayaway-toolchain:${{ steps.toolchain.outputs.tag }}
+          # Same reason as backend: `apk upgrade` must not be served from cache.
+          no-cache-filters: static
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/tayaway-static:buildcache
+          cache-to: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && format('type=registry,ref=ghcr.io/{0}/tayaway-static:buildcache,mode=max', github.repository_owner) || '' }}
+
       # Standalone single-stage image (FROM alpine, no toolchain dependency),
       # so no build-args and no toolchain wait. Shares the per-commit SHA with
       # the app images, though the geoip volume refreshes on its own monthly
@@ -197,6 +222,16 @@ jobs:
           cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/tayaway-db:buildcache
           cache-to: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && format('type=registry,ref=ghcr.io/{0}/tayaway-db:buildcache,mode=max', github.repository_owner) || '' }}
 
+      # The SPA's headers, cache policy and client-side-routing fallback are
+      # tayaway's half of a vhost whose other half now lives in a private repo,
+      # so this is the only place they get asserted end to end. Runs against
+      # the image the step above just loaded.
+      - name: Smoke-test the static image
+        if: github.event_name == 'pull_request'
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/tayaway-static:${{ github.sha }}
+        run: bash containers/static-smoke.sh
+
       # Scan the freshly built images for known, fixable CVEs. PR-only: the
       # steps above load the images into the local daemon on PRs, so a finding
       # surfaces at review time, before the SHA is pushed or self-deployed.
@@ -206,7 +241,7 @@ jobs:
       # base-image bump can always fix. backend and geoip additionally gate on
       # their language/binary findings — those images hold our code.
       #
-      # edge and db keep their binary findings report-only. Caddy's module deps
+      # edge, static and db keep their binary findings report-only. Caddy's deps
       # need an upstream Caddy release, and wal-g self-reports a 2021 advisory
       # fixed in its own 1.1: the build is far past that, but it stamps a
       # v0.0.0-<date> pseudo-version, which Trivy reads as older. Gating either
@@ -234,7 +269,7 @@ jobs:
               --exit-code 0 --no-progress "$ref"
             echo "::endgroup::"
           done
-          for img in tayaway-edge tayaway-db; do
+          for img in tayaway-edge tayaway-static tayaway-db; do
             ref="ghcr.io/${OWNER}/${img}:${SHA}"
             echo "::group::${img} — OS packages, HIGH/CRITICAL (gating)"
             trivy image --severity HIGH,CRITICAL --ignore-unfixed --pkg-types os \
