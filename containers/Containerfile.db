@@ -14,7 +14,7 @@ ARG GOSU_VERSION=v0.0.0-20260606051551-40506998e34a
 # wal-g links libsodium and brotli via cgo, so the build needs their -dev
 # headers + a C toolchain + cmake (brotli is built from a vendored checkout
 # by `make deps`). USE_LIBSODIUM flips on the libsodium build tag + link.
-FROM docker.io/library/golang:1.26-trixie AS walg-build
+FROM docker.io/library/golang:1.27-trixie AS walg-build
 ARG WALG_VERSION
 RUN apt-get update && apt-get install -y --no-install-recommends \
       git make cmake gcc libc6-dev pkg-config libsodium-dev ca-certificates \
@@ -52,7 +52,7 @@ RUN install -D -m 0755 main/pg/wal-g /out/wal-g
 # upstream source here puts it on the base image's toolchain, which is where
 # stdlib security fixes arrive. CGO_ENABLED=0 keeps it static, matching the
 # binary it replaces.
-FROM docker.io/library/golang:1.26-trixie AS gosu-build
+FROM docker.io/library/golang:1.27-trixie AS gosu-build
 ARG GOSU_VERSION
 RUN CGO_ENABLED=0 go install "github.com/tianon/gosu@${GOSU_VERSION}"
 
