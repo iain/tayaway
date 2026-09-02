@@ -43,6 +43,8 @@ const HIDE_REASONS = new Set([
   'not_settled',
   'revert_of_revert',
   'already_paid',
+  'already_resolved',
+  'no_date_ranges',
 ])
 
 // Reasons that should show a disabled element with a tooltip — the user is

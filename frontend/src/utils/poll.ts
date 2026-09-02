@@ -22,14 +22,6 @@ export function isPollActive(poll: PollLike | null | undefined): boolean {
   return poll != null && poll.status !== 'resolved'
 }
 
-// can be closed = active + has at least one date range
-export function canClosePoll(
-  poll: PollLike | null | undefined,
-  dateRangeCount: number
-): boolean {
-  return isPollActive(poll) && dateRangeCount > 0
-}
-
 interface RankableDateRange {
   startDate: string
   voteSummary: { yes: number; preferably_not: number; no: number }

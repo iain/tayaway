@@ -89,7 +89,6 @@ async function handlePollModalConfirm(deadline: string): Promise<void> {
       >
         <DatePollSection
           :event="event"
-          :is-owner="canCreatePoll"
           :current-user-id="currentUserId"
           @vote="handleVote"
         />

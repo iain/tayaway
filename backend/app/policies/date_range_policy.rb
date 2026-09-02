@@ -7,17 +7,15 @@ class DateRangePolicy
 
   def initialize(date_range, membership:, event: nil, **)
     @date_range = date_range
-    if event
-      @event_owner = event.user_id == membership.user_id
-    else
-      poll = DatePoll.find(date_range.date_poll_id)
-      found_event = Event.find(poll.event_id) if poll
-      @event_owner = found_event&.user_id == membership.user_id
-    end
+    resolved_event = event || event_for(date_range)
+    # Same rule as DatePollPolicy: the event owner plus workspace admins and
+    # owners run the poll's date options.
+    @poll_admin = resolved_event&.user_id == membership.user_id ||
+                  %w[admin owner].include?(membership.role)
   end
 
   def delete
-    if @event_owner
+    if @poll_admin
       Success()
     else
       Failure(:not_event_owner)
@@ -26,5 +24,12 @@ class DateRangePolicy
 
   def create_vote
     Success()
+  end
+
+  private
+
+  def event_for(date_range)
+    poll = DatePoll.find(date_range.date_poll_id)
+    Event.find(poll.event_id) if poll
   end
 end

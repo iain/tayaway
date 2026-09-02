@@ -29,9 +29,13 @@ class DatePollSerializer
 
       event_ids = polls.map { |p| p.event_id.to_s }.uniq
       events_by_id = Event.for_ids(event_ids).each_with_object({}) { |e, h| h[e.id.to_s] = e }
+      counts_by_poll = DateRange.counts_for_date_poll_ids(polls.map { |p| p.id.to_s })
 
       polls.each_with_object({}) do |poll, h|
-        h[poll.id.to_s] = { event: events_by_id[poll.event_id.to_s] }
+        h[poll.id.to_s] = {
+          event: events_by_id[poll.event_id.to_s],
+          date_range_count: counts_by_poll[poll.id.to_s] || 0
+        }
       end
     end
   end

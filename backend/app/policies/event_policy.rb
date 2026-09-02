@@ -32,7 +32,7 @@ class EventPolicy
   end
 
   def create_poll
-    if @owner
+    if @owner || @admin_or_owner
       Success()
     else
       Failure(:not_owner)

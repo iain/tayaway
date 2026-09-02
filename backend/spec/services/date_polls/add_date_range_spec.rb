@@ -27,6 +27,29 @@ RSpec.describe DatePolls::AddDateRange do
     expect(result.failure.message).to eq("not_event_owner")
   end
 
+  # The poll's own payload carries its option list and the close permission
+  # derived from it, so both go stale on other clients unless the poll moves
+  # with the range.
+  it "bumps and broadcasts the poll when an option is added" do
+    user = TestFactories.user
+    event = TestFactories.event(workspace: workspace, user: user)
+    poll = DatePoll.find(TestFactories.date_poll(event: event)[:id])
+    allow(Broadcaster).to receive(:object_changed).and_call_original
+
+    described_class.call(
+      event_id: event[:id],
+      membership: membership_for(user),
+      start_date: "2024-06-01",
+      end_date: "2024-06-10"
+    )
+
+    expect(Broadcaster).to have_received(:object_changed).with("date_poll", poll.id)
+    # The row carries a fresh trigger stamp rather than the one it was created
+    # with. Not `be >`: specs run inside one transaction, and the trigger's
+    # NOW() is the transaction's start time, not the statement's.
+    expect(DatePoll.find(poll.id).updated_at).not_to eq(poll.updated_at)
+  end
+
   it "returns failure when poll is not open" do
     user = TestFactories.user
     event = TestFactories.event(workspace: workspace, user: user)

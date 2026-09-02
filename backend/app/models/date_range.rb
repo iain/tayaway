@@ -35,6 +35,20 @@ class DateRange < Data.define(:id, :date_poll_id, :start_date, :end_date, :creat
         .each_with_object(Hash.new { |h, k| h[k] = [] }) { |(poll_id, id), h| h[poll_id.to_s] << id.to_s }
     end
 
+    def count_for_date_poll(date_poll_id)
+      DB[:date_ranges].where(date_poll_id: date_poll_id).count
+    end
+
+    def counts_for_date_poll_ids(date_poll_ids)
+      return {} if date_poll_ids.empty?
+
+      DB[:date_ranges]
+        .where(date_poll_id: date_poll_ids)
+        .group_and_count(:date_poll_id)
+        .to_hash(:date_poll_id, :count)
+        .transform_keys(&:to_s)
+    end
+
     private
 
     def dataset
