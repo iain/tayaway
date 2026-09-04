@@ -1,4 +1,4 @@
-FROM ubuntu:24.04
+FROM ubuntu:26.04
 
 RUN apt-get update && apt-get install -y \
     build-essential \
@@ -25,7 +25,7 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
 # Install starship prompt (needs root for /usr/local/bin)
 RUN curl -sS https://starship.rs/install.sh | sh -s -- --yes
 
-# ubuntu user (uid 1000) already exists in ubuntu:24.04
+# ubuntu user (uid 1000) already exists in ubuntu:26.04
 RUN echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu \
     && chsh -s /usr/bin/fish ubuntu
 
