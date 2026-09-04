@@ -1,7 +1,0 @@
-# Ruby ships json as a DEFAULT gem; the toolchain image's ruby (4.0.6) bundles
-# json 2.18.0 under /mise/installs/ruby. The app does NOT load it — it runs the
-# patched vendored copy pinned in backend/Gemfile.lock (json 2.21.1) under
-# BUNDLE_DEPLOYMENT. The default gemspec is a dormant file, but the scanner
-# still flags it. Remove once the ruby toolchain ships a fixed default.
-# Tracked in #485.
-CVE-2026-33210

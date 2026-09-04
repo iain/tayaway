@@ -316,7 +316,7 @@ DEPENDENCIES
   falcon
   fido_metadata
   irb
-  json
+  json (>= 2.19.2)
   jwt
   listen
   logger
