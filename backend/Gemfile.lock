@@ -199,6 +199,7 @@ GEM
     regexp_parser (2.12.0)
     reline (0.7.0)
       io-console (~> 0.5)
+    resolv (0.7.2)
     roda (3.107.0)
       rack
     roda-websockets (0.1.0)
@@ -315,7 +316,7 @@ DEPENDENCIES
   falcon
   fido_metadata
   irb
-  json
+  json (>= 2.19.2)
   jwt
   listen
   logger
@@ -327,6 +328,7 @@ DEPENDENCIES
   rack-test
   rake
   rbnacl
+  resolv (>= 0.7.2)
   roda (~> 3.106)
   roda-websockets
   rqrcode

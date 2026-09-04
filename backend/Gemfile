@@ -20,8 +20,10 @@ gem "sequel_pg", require: "sequel"
 # so operator login survives main-DB incidents.
 gem "sqlite3"
 
-# JSON
-gem "json"
+# JSON. Floored past CVE-2026-33210 (fixed in 2.19.2) because ruby 4.0.6's
+# default copy is 2.18.0 and containers/Containerfile deletes it, leaving this
+# the only json in the image.
+gem "json", ">= 2.19.2"
 gem "jwt"
 
 # Email
@@ -64,6 +66,13 @@ gem "rake"
 
 # Concurrency (extracted from default gems in Ruby 4.0)
 gem "concurrent-ruby-ext", require: "concurrent"
+
+# DNS resolution. Nothing here depends on it directly, but net/http requires it
+# unconditionally, so ruby 4.0.6's default copy (0.7.0) is live code and
+# CVE-2026-80212 hits it. Pinning the patched release makes bundler activate
+# that ahead of the stdlib one; containers/Containerfile then deletes the copy
+# it supersedes. Drop once the ruby toolchain ships a fixed default.
+gem "resolv", ">= 0.7.2"
 
 group :development do
   # listen for file changes

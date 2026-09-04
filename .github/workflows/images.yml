@@ -246,7 +246,9 @@ jobs:
       # fixed in its own 1.1: the build is far past that, but it stamps a
       # v0.0.0-<date> pseudo-version, which Trivy reads as older. Gating either
       # would mean suppressing CVE IDs globally to get there.
-      # Accepted dormant findings in the gated images are listed in .trivyignore.
+      # The gated images accept no findings: what we can't fix we remove (the
+      # superseded default gems in containers/Containerfile). A finding we ever
+      # did choose to accept would go in a .trivyignore at the repo root.
       - name: Install Trivy
         if: github.event_name == 'pull_request'
         uses: aquasecurity/setup-trivy@v0.3.1

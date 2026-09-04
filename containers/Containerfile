@@ -102,6 +102,35 @@ RUN grep -E '^\[tools\]|^ruby ' /etc/mise/config.toml > /etc/mise/config.toml.tr
     && mv /etc/mise/config.toml.trim /etc/mise/config.toml \
     && find /mise/installs -mindepth 1 -maxdepth 1 ! -name ruby -exec rm -rf {} +
 
+# ruby 4.0.6 ships json 2.18.0 and resolv 0.7.0 as default gems, and
+# CVE-2026-33210 / CVE-2026-80212 hit them. Neither is dormant the way an
+# unused file is — net/http requires resolv unconditionally, and json is
+# everywhere — but backend/Gemfile floors both past the advisory and bundler
+# activates the vendored copies ahead of the stdlib load path, so the defaults
+# are unreachable code that only the scanner still sees. Delete them; carrying
+# them behind a .trivyignore entry means shipping the vulnerable code and
+# choosing not to look at it.
+#
+# `gem uninstall` cannot do this — rubygems refuses to remove a default gem,
+# because ruby's own `make install` put those files there and rubygems has no
+# manifest to reverse. So ask rubygems only where they live (`loaded_from` is
+# the real path; `spec_file` misses the `default/` segment) and let RbConfig
+# name the lib and arch dirs, rather than globbing paths and hoping — the arch
+# dir is platform-shaped, and `psych/json` is psych's and must survive.
+#
+# The version check is the retirement trigger: once ruby ships defaults at or
+# past the fixed versions, the build aborts and says to drop this and the
+# Gemfile floors together.
+RUN mise exec -- ruby -e 'require "fileutils"; require "rbconfig"; \
+    {"json" => "2.19.2", "resolv" => "0.7.2"}.each do |name, fixed| \
+      spec = Gem::Specification.find { |s| s.name == name && s.default_gem? }; \
+      abort "no default #{name} gem: drop this block and the Gemfile floor" unless spec; \
+      abort "default #{name} is #{spec.version}, past #{fixed}: drop this block and the Gemfile floor" if spec.version >= Gem::Version.new(fixed); \
+      lib = RbConfig::CONFIG["rubylibdir"]; arch = RbConfig::CONFIG["archdir"]; \
+      FileUtils.rm([spec.loaded_from, File.join(lib, "#{name}.rb")], verbose: true); \
+      FileUtils.rm_rf([File.join(lib, name), File.join(arch, name)], verbose: true); \
+    end'
+
 WORKDIR /app/backend
 
 COPY --from=gem-build /app/backend/vendor ./vendor
