@@ -111,21 +111,25 @@ RUN grep -E '^\[tools\]|^ruby ' /etc/mise/config.toml > /etc/mise/config.toml.tr
 # them behind a .trivyignore entry means shipping the vulnerable code and
 # choosing not to look at it.
 #
-# Pinned to the vulnerable versions and no -f, on purpose: when the toolchain's
-# ruby ships fixed defaults these stop matching, rm fails the build, and that
-# is the prompt to drop this block and the Gemfile floors with it rather than
-# keep deleting default gems nobody needs deleted any more.
+# `gem uninstall` cannot do this — rubygems refuses to remove a default gem,
+# because ruby's own `make install` put those files there and rubygems has no
+# manifest to reverse. So ask rubygems only where they live (`loaded_from` is
+# the real path; `spec_file` misses the `default/` segment) and let RbConfig
+# name the lib and arch dirs, rather than globbing paths and hoping — the arch
+# dir is platform-shaped, and `psych/json` is psych's and must survive.
 #
-# The json ext lives under the arch dir, matched as *-linux* so the glob can't
-# wander into psych/json, which belongs to psych and must stay.
-RUN set -eu; \
-    for lib in /mise/installs/ruby/*/lib/ruby; do \
-      rm -v "$lib"/gems/*/specifications/default/json-2.18.0.gemspec \
-            "$lib"/gems/*/specifications/default/resolv-0.7.0.gemspec \
-            "$lib"/*/json.rb \
-            "$lib"/*/resolv.rb; \
-      rm -rv "$lib"/*/json "$lib"/*/*-linux*/json; \
-    done
+# The version check is the retirement trigger: once ruby ships defaults at or
+# past the fixed versions, the build aborts and says to drop this and the
+# Gemfile floors together.
+RUN mise exec -- ruby -e 'require "fileutils"; require "rbconfig"; \
+    {"json" => "2.19.2", "resolv" => "0.7.2"}.each do |name, fixed| \
+      spec = Gem::Specification.find { |s| s.name == name && s.default_gem? }; \
+      abort "no default #{name} gem: drop this block and the Gemfile floor" unless spec; \
+      abort "default #{name} is #{spec.version}, past #{fixed}: drop this block and the Gemfile floor" if spec.version >= Gem::Version.new(fixed); \
+      lib = RbConfig::CONFIG["rubylibdir"]; arch = RbConfig::CONFIG["archdir"]; \
+      FileUtils.rm([spec.loaded_from, File.join(lib, "#{name}.rb")], verbose: true); \
+      FileUtils.rm_rf([File.join(lib, name), File.join(arch, name)], verbose: true); \
+    end'
 
 WORKDIR /app/backend
 
