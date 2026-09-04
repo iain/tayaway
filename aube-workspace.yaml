@@ -22,6 +22,19 @@ enableGlobalVirtualStore: false
 # fixes the race upstream.
 linkConcurrency: 1
 
+# Transitive security floors. Nothing here is a direct dependency, so the only
+# lever is an override — `aube update` refreshes direct deps only, and a
+# transitive that still satisfies its parent's range is never re-resolved.
+# Drop each entry once the parent ships a range that floors it on its own.
+#
+# fast-uri — reached solely via vite-plugin-pwa → workbox-build → ajv, which
+# asks for `^3.0.1` and so happily kept the vulnerable 3.1.5. 3.1.6 fixes four
+# HIGH advisories (GHSA-fph4-wmhf-6fwf, GHSA-f65p-4m7j-42xc,
+# GHSA-jqff-g426-hqxp, GHSA-5jgf-p345-68v8 — SSRF and host confusion), which
+# `mise run audit` gates on at --audit-level=high.
+overrides:
+  fast-uri: "^3.1.6"
+
 # Trust-policy exception (reviewed false positive). workbox-build@7.4.1 — the
 # official googlechrome/workbox package, same maintainers/publisher as 7.4.0 —
 # swapped the unmaintained @surma/rollup-plugin-off-main-thread for the
