@@ -6,7 +6,7 @@
 # backup encryption — so we compile it here. Postgres runs `wal-g wal-push`
 # as its archive_command, and the backup / retention / restore-drill timers
 # `podman exec` this same binary.
-ARG WALG_VERSION=v3.0.8
+ARG WALG_VERSION=v3.0.9
 # gosu publishes no semver tags, so the module proxy only offers pseudo-versions.
 ARG GOSU_VERSION=v0.0.0-20260606051551-40506998e34a
 
@@ -14,7 +14,7 @@ ARG GOSU_VERSION=v0.0.0-20260606051551-40506998e34a
 # wal-g links libsodium and brotli via cgo, so the build needs their -dev
 # headers + a C toolchain + cmake (brotli is built from a vendored checkout
 # by `make deps`). USE_LIBSODIUM flips on the libsodium build tag + link.
-FROM docker.io/library/golang:1.26-trixie AS walg-build
+FROM docker.io/library/golang:1.27-trixie AS walg-build
 ARG WALG_VERSION
 RUN apt-get update && apt-get install -y --no-install-recommends \
       git make cmake gcc libc6-dev pkg-config libsodium-dev ca-certificates \
@@ -22,25 +22,29 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN git clone --depth 1 --branch "${WALG_VERSION}" https://github.com/wal-g/wal-g /src
 WORKDIR /src
 ENV USE_LIBSODIUM=1
-# wal-g v3.0.8 imports encoding/json/v2, which Go still gates behind this
-# experiment. Split deps (slow C builds of brotli + libsodium) from the
-# Go build so iterating on the build doesn't recompile them.
-ENV GOEXPERIMENT=jsonv2
+# wal-g imports encoding/json/v2; Go 1.27 makes it the default, so the
+# GOEXPERIMENT=jsonv2 this stage set under the 1.26 base is no longer needed.
+#
 # The go.mod `toolchain` line is a floor, not a ceiling, so the default
 # GOTOOLCHAIN=auto builds with the base image's Go. Bumping the base tag
 # (Dependabot tracks it) is what picks up stdlib security fixes.
-# v3.0.8 is the current wal-g release and its go.mod carries dependency
-# versions with fixable CVEs, so there is no upstream bump to wait for — patch
-# them here before the vendor step. The x/* three are a constraint chain
-# (text pulls net, net pulls crypto); bump them together or MVS rejects the set.
+#
+# wal-g's own go.mod still carries three dependency versions with fixable CVEs,
+# so there is no upstream release to wait for — patch them before the vendor
+# step. Re-derive this list against each new wal-g tag rather than carrying it
+# forward: 3.0.9 already shipped past most of what 3.0.8 needed patched here,
+# and a pin left below what upstream ships is a silent downgrade.
+#
+# Not patched, because upstream lists no fix: x/crypto's unmaintained openpgp
+# package (GO-2026-5932) and the aws-sdk-go v1 S3 crypto client
+# (GO-2022-0635/0646).
 RUN go get \
-      github.com/jackc/pgx/v5@v5.9.0 \
-      google.golang.org/grpc@v1.82.1 \
-      go.mongodb.org/mongo-driver@v1.17.7 \
-      golang.org/x/crypto@v0.53.0 \
-      golang.org/x/net@v0.56.0 \
-      golang.org/x/text@v0.39.0 \
+      golang.org/x/crypto@v0.56.0 \
+      golang.org/x/mod@v0.40.0 \
+      google.golang.org/grpc@v1.83.1 \
     && go mod tidy
+# Split the slow C builds of brotli + libsodium from the Go build so iterating
+# on the latter doesn't recompile them.
 RUN make deps
 RUN make pg_build
 RUN echo "=== ldd ===" && ldd main/pg/wal-g || true; ./main/pg/wal-g --version
@@ -52,7 +56,7 @@ RUN install -D -m 0755 main/pg/wal-g /out/wal-g
 # upstream source here puts it on the base image's toolchain, which is where
 # stdlib security fixes arrive. CGO_ENABLED=0 keeps it static, matching the
 # binary it replaces.
-FROM docker.io/library/golang:1.26-trixie AS gosu-build
+FROM docker.io/library/golang:1.27-trixie AS gosu-build
 ARG GOSU_VERSION
 RUN CGO_ENABLED=0 go install "github.com/tianon/gosu@${GOSU_VERSION}"
 
