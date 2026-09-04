@@ -12,10 +12,10 @@ import {
   isPollOpen,
   isPollExpired,
   isPollResolved,
-  canClosePoll,
   formatPollDeadline,
   rankDateRanges,
 } from '@/utils/poll'
+import { can } from '@/composables/usePermission'
 import VoteSummaryBar from '@/components/votes/VoteSummaryBar.vue'
 import VoteBreakdown from '@/components/votes/VoteBreakdown.vue'
 import ClosePollModal from './ClosePollModal.vue'
@@ -26,7 +26,6 @@ import AppButton from '@/components/common/AppButton.vue'
 
 const props = defineProps<{
   event: HydratedEvent
-  isOwner: boolean
   currentUserId: string | null
 }>()
 
@@ -221,11 +220,10 @@ function handleVote(): void {
           </div>
         </div>
 
-        <!-- Owner actions -->
-        <div
-          v-if="isOwner && canClosePoll(poll, rankedDateRanges.length)"
-          class="mt-4"
-        >
+        <!-- Poll admin actions. `close` carries both halves of the gate: who
+             may pick a winner, and whether there is one to pick (an unresolved
+             poll with at least one date option). -->
+        <div v-if="can(poll.permissions, 'close')" class="mt-4">
           <AppButton @click="handleClosePoll">Select Winner</AppButton>
         </div>
       </template>

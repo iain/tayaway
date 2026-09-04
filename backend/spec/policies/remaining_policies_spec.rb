@@ -18,6 +18,9 @@ RSpec.describe "Remaining policies" do
     let(:poll_row) { TestFactories.date_poll(event: event_row) }
     let(:poll) { DatePoll.find(poll_row[:id]) }
 
+    # Closing needs an option to pick, so the poll under test carries one.
+    before { TestFactories.date_range(date_poll: poll_row) }
+
     it "allows event owner to close" do
       policy = described_class.new(poll, membership: membership_a, event: event)
       expect(policy.close).to be_success
@@ -27,6 +30,25 @@ RSpec.describe "Remaining policies" do
       policy = described_class.new(poll, membership: membership_b, event: event)
       expect(policy.close).to be_failure
       expect(policy.close.failure).to eq(:not_event_owner)
+    end
+
+    it "allows a workspace admin who isn't the event owner to close" do
+      policy = described_class.new(poll, membership: admin_membership, event: event)
+      expect(policy.close).to be_success
+    end
+
+    # Polls are one per event, so a poll in another state needs its own event.
+    # The policy looks the event up itself when it isn't passed in.
+    it "rejects closing a poll that is already resolved" do
+      resolved_row = TestFactories.date_poll(event: TestFactories.event(workspace: workspace, user: user_a), closed_at: Time.now)
+      policy = described_class.new(DatePoll.find(resolved_row[:id]), membership: membership_a)
+      expect(policy.close.failure).to eq(:already_resolved)
+    end
+
+    it "rejects closing a poll with no date options" do
+      bare_row = TestFactories.date_poll(event: TestFactories.event(workspace: workspace, user: user_a))
+      policy = described_class.new(DatePoll.find(bare_row[:id]), membership: membership_a)
+      expect(policy.close.failure).to eq(:no_date_ranges)
     end
 
     it "has correct ACTIONS" do
@@ -47,6 +69,11 @@ RSpec.describe "Remaining policies" do
     it "rejects non-event-owner from deleting" do
       policy = described_class.new(range, membership: membership_b, event: event)
       expect(policy.delete).to be_failure
+    end
+
+    it "allows a workspace admin who isn't the event owner to delete" do
+      policy = described_class.new(range, membership: admin_membership, event: event)
+      expect(policy.delete).to be_success
     end
 
     it "has correct ACTIONS" do

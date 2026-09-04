@@ -45,7 +45,16 @@ module DatePolls
                      )
                      .first
 
-          Broadcaster.object_changed("date_range", dr_id) if inserted
+          if inserted
+            # The poll's payload lists its options and carries the close
+            # permission derived from them, so it has to move with the range or
+            # other clients sit on a stale copy — one whose updatedAt loses the
+            # pool's newer-wins merge. The touch is what bumps it (the BEFORE
+            # UPDATE trigger stamps the value).
+            DB[:date_polls].where(id: poll.id).update(updated_at: Sequel::CURRENT_TIMESTAMP)
+            Broadcaster.object_changed("date_range", dr_id)
+            Broadcaster.object_changed("date_poll", poll.id)
+          end
         end
 
         pool = PoolSerializer.new(membership: membership)

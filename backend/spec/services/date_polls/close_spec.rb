@@ -27,6 +27,24 @@ RSpec.describe DatePolls::Close do
     expect(result.failure.message).to eq("not_event_owner")
   end
 
+  it "lets a workspace admin close a poll on an event they don't own" do
+    owner = TestFactories.user
+    admin = TestFactories.user
+    event = TestFactories.event(workspace: workspace, user: owner)
+    date_poll = TestFactories.date_poll(event: event)
+    date_range = TestFactories.date_range(date_poll: date_poll)
+    admin_row = TestFactories.workspace_membership(workspace: workspace, user: admin, role: "admin")
+
+    result = described_class.call(
+      event_id: event[:id],
+      membership: WorkspaceMembership.find(admin_row[:id]),
+      selected_date_range_id: date_range[:id]
+    )
+
+    expect(result.success?).to be true
+    expect(DatePoll.find(date_poll[:id]).selected_date_range_id.to_s).to eq(date_range[:id].to_s)
+  end
+
   it "returns failure when poll is already resolved" do
     user = TestFactories.user
     event = TestFactories.event(workspace: workspace, user: user)
@@ -40,13 +58,13 @@ RSpec.describe DatePolls::Close do
     )
 
     expect(result.failure?).to be true
-    expect(result.failure.message).to eq("Poll is already resolved")
+    expect(result.failure.message).to eq("already_resolved")
   end
 
   it "returns failure when selected_date_range_id is missing" do
     user = TestFactories.user
     event = TestFactories.event(workspace: workspace, user: user)
-    TestFactories.date_poll(event: event)
+    TestFactories.date_range(date_poll: TestFactories.date_poll(event: event))
 
     result = described_class.call(
       event_id: event[:id],
@@ -62,7 +80,7 @@ RSpec.describe DatePolls::Close do
     user = TestFactories.user
     event1 = TestFactories.event(workspace: workspace, user: user)
     event2 = TestFactories.event(workspace: workspace, user: user)
-    TestFactories.date_poll(event: event1)
+    TestFactories.date_range(date_poll: TestFactories.date_poll(event: event1))
     other_poll = TestFactories.date_poll(event: event2)
     other_range = TestFactories.date_range(date_poll: other_poll)
 

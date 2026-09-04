@@ -78,6 +78,12 @@ RSpec.describe EventPolicy do
       policy = described_class.new(event, membership: WorkspaceMembership.find(other_membership[:id]))
       expect(policy.create_poll).to be_failure
     end
+
+    it "allows a workspace admin who isn't the event owner" do
+      admin_membership = TestFactories.workspace_membership(workspace: workspace, user: other_user, role: "admin")
+      policy = described_class.new(event, membership: WorkspaceMembership.find(admin_membership[:id]))
+      expect(policy.create_poll).to be_success
+    end
   end
 
   describe "#permissions" do

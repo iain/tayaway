@@ -15,21 +15,12 @@ module DatePolls
             .bind { Event.find_result(event_id) }
             .bind { |event| DatePoll.find_by_event_result(event.id).fmap { |poll| [event, poll] } }
             .bind { |(event, poll)| DatePollPolicy.enforce(:close, poll, membership: membership, event: event).fmap { |_| [event, poll] } }
-            .bind { |(event, poll)| validate_not_resolved(event, poll) }
             .bind { |(event, poll)| validate_date_range(event, poll, selected_date_range_id) }
             .bind { |(event, poll, dr_id)| close_poll(event, poll, dr_id, membership) }
         end
       end
 
       private
-
-      def validate_not_resolved(event, poll)
-        if poll.closed_at
-          Failure(ServiceError.validation("Poll is already resolved"))
-        else
-          Success([event, poll])
-        end
-      end
 
       def validate_date_range(event, poll, selected_date_range_id)
         if selected_date_range_id.nil? || selected_date_range_id.empty?
