@@ -143,10 +143,19 @@ COPY backend/ ./
 # LANG: the slim toolchain base ships no default locale, leaving Ruby's external
 # encoding at US-ASCII — Rack::Builder.load_file then crashes on any non-ASCII
 # byte in a rackup file (bit the admin site's config.ru).
+#
+# MISE_STATE_DIR: mise ensures its state dir exists before reading any config,
+# and since 2026.9.x that failing is fatal rather than a warning — so on the
+# read-only rootfs every `mise exec` died with "failed create_dir_all:
+# ~/.local/state/mise/trusted-configs". MISE_TRUSTED_CONFIG_PATHS below does not
+# avoid it; the directory is created regardless of whether a trust record is
+# needed. Point it at the tmpfs /tmp that the quadlet (and e2e/containerised-up.sh)
+# already mount. Nothing here needs to outlive the container.
 ENV MISE_ENV=production \
     RACK_ENV=production \
     FALCON_URL=http://0.0.0.0:9292 \
     MISE_TRUSTED_CONFIG_PATHS=/app \
+    MISE_STATE_DIR=/tmp/mise-state \
     BUNDLE_DEPLOYMENT=true \
     BUNDLE_WITHOUT=development:test \
     LANG=C.UTF-8
