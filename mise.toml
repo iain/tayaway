@@ -1,14 +1,15 @@
-# Fail fast on older mise binaries. Bumped from 2026.6.11 (the floor for
-# `monorepo_root` shedding its `experimental_` prefix) for `mise lock --bump`,
-# which landed in 2026.7.12 and is what tools-lock.yml uses to advance the
-# fuzzy version selectors in mise.lock.
+# Fail fast on older mise binaries. Now tracks the lockfile format: mise.lock
+# is `lockfile_version = 1`, which landed in 2026.8.11 along with `mise lock
+# --upgrade` that migrated it off the legacy unversioned format. A v1 lockfile
+# binds each original request (`node = "26"`) to the entry it resolved to, so
+# overlapping loose and exact requests can pin distinct versions — and so
+# tools-lock.yml's `mise lock --bump` can advance them.
 #
-# 2026.7.13 additionally fixes a false "provenance regression" error when
-# bumping a locked `github:` tool to a version already installed on disk —
-# tools-lock.yml's exact path. It isn't the floor because Homebrew lags a day
-# or two behind and this would lock everyone out meanwhile; CI is unaffected
-# either way, since mise-action installs the latest release.
-min_version = "2026.7.12"
+# Previous floors, all now implied: 2026.6.11 (`monorepo_root` shedding its
+# `experimental_` prefix), 2026.7.12 (`mise lock --bump` itself), and 2026.7.13
+# (a false "provenance regression" when bumping a locked `github:` tool to a
+# version already on disk — tools-lock.yml's exact path).
+min_version = "2026.8.11"
 
 # Marks this file as the root of a mise monorepo. Subproject mise.toml files
 # (listed below under [monorepo]) get their own tools, env, and tasks, and
@@ -67,9 +68,9 @@ pitchfork = "latest"
 # --global` (see setup:hooks for the per-repo fallback). hk is pinned (not
 # "latest"): hk.pkl's `amends` URL hard-codes the same version and the binary
 # must match that schema, so bump both together (in lockstep — currently
-# 1.55.0). hk embeds its own pkl evaluator (pklr) since 1.47, so no separate
+# 1.57.0). hk embeds its own pkl evaluator (pklr) since 1.47, so no separate
 # pkl CLI tool is needed to parse hk.pkl.
-hk = "1.55.0"
+hk = "1.57.0"
 aube = "latest"
 taplo = "latest"
 shellcheck = "latest"
