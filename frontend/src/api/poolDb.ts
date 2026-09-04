@@ -57,7 +57,12 @@ interface PoolCacheDB {
 // cached rsvp objects, which no longer exist as a pool type.
 // Bumped to 20 when choreAssignments gained attendanceId (doc/attendances.md
 // phase 8); cached rows lack the field the roster is now keyed on.
-const CACHE_VERSION = 20
+// Bumped to 21 when workspace admins and owners gained the poll permissions
+// (#624). Permissions are viewer-derived but ride on the row and are keyed by
+// its updatedAt, so widening a policy leaves every cached copy of an untouched
+// row saying "no" — a partial sync never re-sends it, and the merge would drop
+// it anyway. Only a wipe → full sync re-reads them.
+const CACHE_VERSION = 21
 
 const CACHE_VERSION_META_KEY = 'cacheVersion'
 const SYNCED_AT_META_PREFIX = 'syncedAt:'

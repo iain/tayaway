@@ -101,6 +101,20 @@ A model predicate (`expense.settled?`) runs once per object inside PoolSerialize
 
 Actor rules can be relaxed or tightened freely. Invariants are usually load-bearing — `:settled` exists for accounting integrity, not ergonomics — and should move only with a clear reason. Identify which axis a change touches before making it.
 
+### Shipping a policy change: bump `CACHE_VERSION`
+
+Permissions are computed per viewer, but they ride on the object and are versioned by the row's `updatedAt`. Policy code isn't in that key, so a deployed policy change reaches nobody on its own:
+
+- partial sync only sends rows that changed, and a policy edit changes no row;
+- the pool merge only replaces a cached copy on a strictly newer `updatedAt`, so even a re-delivered copy loses;
+- a full sync does re-read permissions, but each client only reconciles once every ~22–24h.
+
+The result is a policy that is live on the server and invisible in the UI for a day — #624 widened the date-poll actions to workspace admins and owners, and the button stayed hidden for every client whose poll row hadn't been touched since.
+
+So: **any change to who may do what, or to which reason a denial returns, needs a `CACHE_VERSION` bump** in `frontend/src/api/poolDb.ts`. The wipe drops the cursors too, so the next connect is a full sync and every object re-reads its permissions.
+
+Touching the affected rows works for one deploy's worth of objects (`DatePolls::AddDateRange` bumps the poll so its `close` permission is re-derived), but it only covers rows a service happens to write. The cache bump is what covers the rest.
+
 ## Context passing for performance
 
 Some policies need data that would cause N+1 queries if fetched per-object
