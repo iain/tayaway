@@ -114,5 +114,5 @@ A policy crash for one object is caught in `PermissionAttacher.attach_to_message
 3. Implement `<Model>Serializer.serialize_batch` (or extend `PoolObjectSerializer` if it fits).
 4. Implement `<Model>Policy` with at least the actions your routes enforce. User-audience types may set `policy: nil`.
 5. In every service that mutates the new type, follow the three rules above. User-audience services pass `user_id:` to `Broadcaster` and skip rules 2 and 3.
-6. Bump `CACHE_VERSION` in `frontend/src/api/poolDb.ts` if the wire shape changes — clients with stale caches will reset and full-sync.
+6. Bump `CACHE_VERSION` in `frontend/src/api/poolDb.ts` if the wire shape changes — clients with stale caches will reset and full-sync. A **policy** change counts: `permissions` rides on the row and is keyed by its `updatedAt`, so widening a policy leaves untouched rows saying "no" until the next full sync (see doc/authorization.md).
 7. Add a `CASCADE_RULES` entry in `frontend/src/stores/objectPool.ts` if the new type is a parent — this is the client-side safety net, not a substitute for backend broadcasts.
