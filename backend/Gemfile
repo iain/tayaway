@@ -65,6 +65,12 @@ gem "rake"
 # Concurrency (extracted from default gems in Ruby 4.0)
 gem "concurrent-ruby-ext", require: "concurrent"
 
+# DNS resolution. Nothing here requires it, but Ruby 4.0.6 still ships 0.7.0 as
+# a default gem and CVE-2026-80212 hits it; vendoring the patched release means
+# any `require "resolv"` reaching for it gets that one. Drop once the ruby
+# toolchain ships a fixed default.
+gem "resolv", ">= 0.7.2"
+
 group :development do
   # listen for file changes
   gem "listen", require: false
