@@ -102,6 +102,20 @@ RUN grep -E '^\[tools\]|^ruby ' /etc/mise/config.toml > /etc/mise/config.toml.tr
     && mv /etc/mise/config.toml.trim /etc/mise/config.toml \
     && find /mise/installs -mindepth 1 -maxdepth 1 ! -name ruby -exec rm -rf {} +
 
+# ruby 4.0.6 still ships resolv 0.7.0 as a default gem, and CVE-2026-80212 hits
+# it. It isn't dormant — net/http requires resolv unconditionally — so this is
+# live code, not a file the scanner merely trips over. backend/Gemfile pins the
+# patched 0.7.2 and bundler activates that ahead of the stdlib load path, which
+# leaves the default copy superseded: delete it rather than carry the
+# vulnerable one and ignore the finding.
+#
+# Matched on 0.7.0 rather than resolv-*, and no -f, on purpose: when the
+# toolchain's ruby ships a newer default the glob stops matching, rm fails the
+# build, and that is the prompt to drop this block and the Gemfile pin together
+# instead of quietly deleting a default gem nobody needs deleted any more.
+RUN rm -v /mise/installs/ruby/*/lib/ruby/gems/*/specifications/default/resolv-0.7.0.gemspec \
+          /mise/installs/ruby/*/lib/ruby/*/resolv.rb
+
 WORKDIR /app/backend
 
 COPY --from=gem-build /app/backend/vendor ./vendor

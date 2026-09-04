@@ -5,8 +5,3 @@
 # still flags it. Remove once the ruby toolchain ships a fixed default.
 # Tracked in #485.
 CVE-2026-33210
-
-# Same shape for resolv: ruby 4.0.6's default gem is 0.7.0, the fixed release is
-# 0.7.2 (vendored via backend/Gemfile.lock, so that's what any require gets).
-# The default gemspec stays on disk and the scanner keeps flagging it.
-CVE-2026-80212
