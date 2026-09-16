@@ -11,7 +11,7 @@ class App < Roda
   use SecurityHeaders
 
   plugin :json
-  plugin :json_parser
+  plugin :json_parser, content_type_regexp: /\Aapplication\/json\b/i
   plugin :hash_routes
   plugin :request_headers
   plugin :all_verbs

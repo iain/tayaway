@@ -13,7 +13,7 @@ class AdminApp < Roda
   include ResultHandler
 
   plugin :json
-  plugin :json_parser
+  plugin :json_parser, content_type_regexp: /\Aapplication\/json\b/i
   plugin :cookies
   plugin :render, views: File.expand_path("views", __dir__), escape: true
   # The stylesheets have stable, undigested filenames, and `default_headers`
