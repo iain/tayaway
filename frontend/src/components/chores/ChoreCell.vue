@@ -27,7 +27,7 @@ const props = withDefaults(
     // detectAttendanceDrift); their chips get a warning mark.
     staleAssignmentIds?: Set<string>
   }>(),
-  { orientation: 'stack' }
+  { orientation: 'stack', staleAssignmentIds: undefined }
 )
 
 const emit = defineEmits<{

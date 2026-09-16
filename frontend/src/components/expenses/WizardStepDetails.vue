@@ -11,7 +11,7 @@ defineProps<{
 
 const description = defineModel<string>('description', { required: true })
 const amount = defineModel<string>('amount', { required: true })
-const payerUserId = defineModel<string>('payerUserId')
+const payerUserId = defineModel<string>('payerUserId', { required: true })
 
 const amountError = ref('')
 
@@ -66,9 +66,7 @@ function formatAmount(): void {
     </div>
 
     <FormSelect
-      v-if="
-        payerOptions && payerOptions.length > 1 && payerUserId !== undefined
-      "
+      v-if="payerOptions && payerOptions.length > 1"
       id="expense-payer"
       :model-value="payerUserId"
       label="Paid by"
