@@ -1,12 +1,12 @@
 // hk — git hook manager (https://hk.jdx.dev). Owns the pre-commit pipeline.
 // Installed once per machine with `hk install --global`; `mise run setup:hooks`
-// is a per-repo fallback. Requires the pkl CLI (see root mise.toml [tools]).
+// is a per-repo fallback.
 //
 // The amends URL hard-codes the hk version, which is why `hk` is pinned (not
 // "latest") in mise.toml — the binary and this schema must move together. To
 // upgrade, bump both in one commit (re-run `hk init` in a scratch dir to see
 // the current URL); a binary reading a stale Config.pkl can fail to parse.
-amends "package://github.com/jdx/hk/releases/download/v1.57.0/hk@1.57.0#/Config.pkl"
+amends "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Config.pkl"
 
 // Skip vendored, generated, and binary-baseline paths across every step —
 // unions with per-step excludes. Mainly keeps the repo-wide `hk util` guards
