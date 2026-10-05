@@ -50,85 +50,85 @@ url_api = "https://api.github.com/repos/rhysd/actionlint/releases/assets/3849249
 provenance = "github-attestations"
 
 [[tools.aube]]
-version = "2.2.17"
+version = "2.6.1"
 backend = "aqua:jdx/aube"
 specifiers = ["latest"]
 
 [tools.aube."platforms.linux-arm64"]
-checksum = "sha256:933d5e63aafef67baa7ec9b0589674e399b3f0e567837f88404b89f08be0bbc1"
-url = "https://github.com/aubepkg/aube/releases/download/v2.2.17/aube-v2.2.17-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/566085427"
+checksum = "sha256:ff945fd7a68d25d87b47e45877228ad269d5a053c04522599b31c130d734f40d"
+url = "https://github.com/aubepkg/aube/releases/download/v2.6.1/aube-v2.6.1-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/599353459"
 provenance = "github-attestations"
 
 [tools.aube."platforms.linux-arm64-musl"]
-checksum = "sha256:2c564811b7a0ef1c3011282696a9cbaa422cdc65951ab8cc98ac65b298112921"
-url = "https://github.com/aubepkg/aube/releases/download/v2.2.17/aube-v2.2.17-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/566059559"
+checksum = "sha256:521b5cb38cf6c07c1a43a6bce2d3c34c603a26b47a05ff8b5f6112cdadf18996"
+url = "https://github.com/aubepkg/aube/releases/download/v2.6.1/aube-v2.6.1-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/599315338"
 provenance = "github-attestations"
 
 [tools.aube."platforms.linux-x64"]
-checksum = "sha256:ee4f05a2989e6cbe55b306097cbb53da9f908789acb027e62c430de2f7e22c2f"
-url = "https://github.com/aubepkg/aube/releases/download/v2.2.17/aube-v2.2.17-x86_64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/566068152"
+checksum = "sha256:364b4cf201970cd5c943390dd3e736b4256b14a0ac52d304f8fb4acfd6a1fbd3"
+url = "https://github.com/aubepkg/aube/releases/download/v2.6.1/aube-v2.6.1-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/599329854"
 provenance = "github-attestations"
 
 [tools.aube."platforms.linux-x64-musl"]
-checksum = "sha256:6ec5a6bb93ded45db61445bd4b730b63be002cde442af8eecfc02a84a27dd221"
-url = "https://github.com/aubepkg/aube/releases/download/v2.2.17/aube-v2.2.17-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/566065871"
+checksum = "sha256:d69ab74a5e21f4dcaf5a41899a623114d6df77c11a170089ade86348bbc2b234"
+url = "https://github.com/aubepkg/aube/releases/download/v2.6.1/aube-v2.6.1-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/599324676"
 provenance = "github-attestations"
 
 [tools.aube."platforms.macos-arm64"]
-checksum = "sha256:83b2906a998ea62eb4890abb8d45010f0ced1674a2bb6b436c2e352d47bb338f"
-url = "https://github.com/aubepkg/aube/releases/download/v2.2.17/aube-v2.2.17-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/566095262"
+checksum = "sha256:a36856db187dd8f2c3cbf651de1384a2d0748d7cc5507671e6ec02751f00c032"
+url = "https://github.com/aubepkg/aube/releases/download/v2.6.1/aube-v2.6.1-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/599368816"
 provenance = "github-attestations"
 
 [tools.aube."platforms.windows-x64"]
-checksum = "sha256:03c93095d89f41496436083f45d770b3169dd1f7db91d86577a9e3d004605c0f"
-url = "https://github.com/aubepkg/aube/releases/download/v2.2.17/aube-v2.2.17-x86_64-pc-windows-msvc.zip"
-url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/566086613"
+checksum = "sha256:f6399466cc0e0c2f52248b56477182d4857a8a02d518936b055a3a67f0f25f87"
+url = "https://github.com/aubepkg/aube/releases/download/v2.6.1/aube-v2.6.1-x86_64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/aubepkg/aube/releases/assets/599349055"
 provenance = "github-attestations"
 
 [[tools.git-cliff]]
-version = "2.14.1"
+version = "2.14.2"
 backend = "aqua:orhun/git-cliff"
 specifiers = ["latest"]
 
 [tools.git-cliff."platforms.linux-arm64"]
-checksum = "sha256:e99dc84135c6bc27aefc9d8226f7297119ed6750a32f45418f4587bc6cb260d8"
-url = "https://github.com/orhun/git-cliff/releases/download/v2.14.1/git-cliff-2.14.1-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/orhun/git-cliff/releases/assets/539696829"
+checksum = "sha256:69e208f6e4baef3a0f9b759d5f44223aa9336b86c691072a3d0c98d35a816e69"
+url = "https://github.com/orhun/git-cliff/releases/download/v2.14.2/git-cliff-2.14.2-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/orhun/git-cliff/releases/assets/573483780"
 
 [tools.git-cliff."platforms.linux-arm64-musl"]
-checksum = "sha256:ee79fa39a8bb100b12937b0ac4800cc4436ae48f678ef8a1502ce99754552b0c"
-url = "https://github.com/orhun/git-cliff/releases/download/v2.14.1/git-cliff-2.14.1-aarch64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/orhun/git-cliff/releases/assets/539696760"
+checksum = "sha256:4be21b21ec9699af4d330b224aeba8a41d41d8f5b351ca2da8a9ea2bdc36380f"
+url = "https://github.com/orhun/git-cliff/releases/download/v2.14.2/git-cliff-2.14.2-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/orhun/git-cliff/releases/assets/573485334"
 
 [tools.git-cliff."platforms.linux-x64"]
-checksum = "sha256:dfe9bef0c7a00d05fafe78e6e591a1a280d39dd495b8066764db0a559acde67f"
-url = "https://github.com/orhun/git-cliff/releases/download/v2.14.1/git-cliff-2.14.1-x86_64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/orhun/git-cliff/releases/assets/539696847"
+checksum = "sha256:24f397c733add5390fdceee3a2088588ab0d5f944ce00d34cb7029b888cf2db4"
+url = "https://github.com/orhun/git-cliff/releases/download/v2.14.2/git-cliff-2.14.2-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/orhun/git-cliff/releases/assets/573483509"
 
 [tools.git-cliff."platforms.linux-x64-musl"]
-checksum = "sha256:cba6ae86f0a4205784eed8ef049fe53c904138806e33a1bda2e25026b17198eb"
-url = "https://github.com/orhun/git-cliff/releases/download/v2.14.1/git-cliff-2.14.1-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/orhun/git-cliff/releases/assets/539696922"
+checksum = "sha256:fa21e2fc70046fcfd0e43e5e4613873ab799aff3d9dc8559c00d31b270e417d0"
+url = "https://github.com/orhun/git-cliff/releases/download/v2.14.2/git-cliff-2.14.2-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/orhun/git-cliff/releases/assets/573485273"
 
 [tools.git-cliff."platforms.macos-arm64"]
-checksum = "sha256:2e2d1f60963aa6a201dbd21df14d7f44025328b8bb33437695f15a516598615a"
-url = "https://github.com/orhun/git-cliff/releases/download/v2.14.1/git-cliff-2.14.1-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/orhun/git-cliff/releases/assets/539696537"
+checksum = "sha256:a0be97e237d440d34c5e508ec21d070b2c85cbb8be48a46a56f9a4e8bd247f05"
+url = "https://github.com/orhun/git-cliff/releases/download/v2.14.2/git-cliff-2.14.2-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/orhun/git-cliff/releases/assets/573487203"
 
 [tools.git-cliff."platforms.macos-x64"]
-checksum = "sha256:d1ca51bfd8b8c2a09434532bdb85bab50179b7c0bde2378aa48f3c1a7dc2fd36"
-url = "https://github.com/orhun/git-cliff/releases/download/v2.14.1/git-cliff-2.14.1-x86_64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/orhun/git-cliff/releases/assets/539697282"
+checksum = "sha256:4e647d2deb152aca1e987f225cf42b080b991dd98f3bce4027ef95446d982ac3"
+url = "https://github.com/orhun/git-cliff/releases/download/v2.14.2/git-cliff-2.14.2-x86_64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/orhun/git-cliff/releases/assets/573484837"
 
 [tools.git-cliff."platforms.windows-x64"]
-checksum = "sha256:791aa263079aa7894e24d4e2f8e978aa6214e9dd9dbf04f79ae5f3565758f1a1"
-url = "https://github.com/orhun/git-cliff/releases/download/v2.14.1/git-cliff-2.14.1-x86_64-pc-windows-msvc.zip"
-url_api = "https://api.github.com/repos/orhun/git-cliff/releases/assets/539702434"
+checksum = "sha256:6ece2112b3f4af462190ecbea4aeb1315fff6af415629b597f84319073c31131"
+url = "https://github.com/orhun/git-cliff/releases/download/v2.14.2/git-cliff-2.14.2-x86_64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/orhun/git-cliff/releases/assets/573487227"
 
 [[tools.hk]]
 version = "2.0.1"
@@ -166,62 +166,72 @@ url = "https://github.com/jdx/hk/releases/download/v2.0.1/hk-x86_64-pc-windows-m
 signer = "sigstore-oidc:https://github.com/jdx/hk/.github/workflows/release.yml"
 
 [[tools.node]]
-version = "26.8.2"
+version = "26.10.0"
 backend = "core:node"
 specifiers = ["26"]
 
 [tools.node."platforms.linux-arm64"]
-checksum = "sha256:746cdbf21565b4ea06f77642bb0e85466de8bb722242be2c5e006f272c361c63"
-url = "https://nodejs.org/dist/v26.8.2/node-v26.8.2-linux-arm64.tar.gz"
+checksum = "sha256:423a41bff8e2a2fa15e702fefe2919ef95823b2378744daccb8439302534b44f"
+url = "https://nodejs.org/dist/v26.10.0/node-v26.10.0-linux-arm64.tar.gz"
 
 [tools.node."platforms.linux-arm64-musl"]
-checksum = "sha256:125437a0b59d69592b8f4bb813a47245337afac8c973d15ab7720f0ec55d182d"
-url = "https://unofficial-builds.nodejs.org/download/release/v26.8.2/node-v26.8.2-linux-arm64-musl.tar.gz"
+checksum = "sha256:d26027bff3197050d2a2b0bfa151b18e8378ed81affa2bf5093804db158979b6"
+url = "https://unofficial-builds.nodejs.org/download/release/v26.10.0/node-v26.10.0-linux-arm64-musl.tar.gz"
 
 [tools.node."platforms.linux-x64"]
-checksum = "sha256:badb3fe6a61b85e1352ca6564dc56b8b7bd5ecd5c474c52acc21dd0cdd586f35"
-url = "https://nodejs.org/dist/v26.8.2/node-v26.8.2-linux-x64.tar.gz"
+checksum = "sha256:cb5c9ce9c80d7b8821e3a258543c71b939138cf17c74d5cc44bbe85d6dbc5ad8"
+url = "https://nodejs.org/dist/v26.10.0/node-v26.10.0-linux-x64.tar.gz"
 
 [tools.node."platforms.linux-x64-musl"]
-checksum = "sha256:696eb0180248a06c9893f3f07bcc4e2680891c83118c73aaf1de330efd053910"
-url = "https://unofficial-builds.nodejs.org/download/release/v26.8.2/node-v26.8.2-linux-x64-musl.tar.gz"
+checksum = "sha256:e42da94821b9422eb76bf5aaf4de0977e04ba320b8aff6148d895a94b08ee223"
+url = "https://unofficial-builds.nodejs.org/download/release/v26.10.0/node-v26.10.0-linux-x64-musl.tar.gz"
 
 [tools.node."platforms.macos-arm64"]
-checksum = "sha256:974b6d5fb2fc7c33ff2354db0902b4e91c2de01ec8acc6de48e543c97e18c9e1"
-url = "https://nodejs.org/dist/v26.8.2/node-v26.8.2-darwin-arm64.tar.gz"
+checksum = "sha256:751fdf7439f115d87ee2a8f3f18c065b6151852068e3e666ac60ac2996f75ac9"
+url = "https://nodejs.org/dist/v26.10.0/node-v26.10.0-darwin-arm64.tar.gz"
 
 [tools.node."platforms.macos-x64"]
-checksum = "sha256:adb8feb2d4987df3d72d2ec46f4fc4b58039c859b8c3f0e3cc2d3c6cbaf8629c"
-url = "https://nodejs.org/dist/v26.8.2/node-v26.8.2-darwin-x64.tar.gz"
+checksum = "sha256:ebbe9ab9b58ad6bb54390d6e2c862c1afa7d4475fb7e8ae8146acde211bf70df"
+url = "https://nodejs.org/dist/v26.10.0/node-v26.10.0-darwin-x64.tar.gz"
 
 [tools.node."platforms.windows-x64"]
-checksum = "sha256:cf02f5d0c06c794b84f277177d5cf3743d0924ca49f6641cd435dd7cb6ee9085"
-url = "https://nodejs.org/dist/v26.8.2/node-v26.8.2-win-x64.zip"
+checksum = "sha256:9fef7eca6743a6b910989cd8e78712376b394fcb9b6e1e9c44a0799a287f90c5"
+url = "https://nodejs.org/dist/v26.10.0/node-v26.10.0-win-x64.zip"
 
 [[tools.pitchfork]]
-version = "2.25.0"
+version = "2.29.0"
 backend = "aqua:jdx/pitchfork"
 specifiers = ["latest"]
 
 [tools.pitchfork."platforms.linux-arm64"]
-checksum = "sha256:92b55dbe45ec30e6f24b7517e25801f2a1ddfc1b6050326390da303f971b68a1"
-url = "https://github.com/jdx/pitchfork/releases/download/v2.25.0/pitchfork-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/jdx/pitchfork/releases/assets/557426814"
+checksum = "sha256:dfea08ac9b4a8b2a3f4c9ce94c5faba9a1996634a22bdc6fd17510affe9dca71"
+url = "https://github.com/jdx/pitchfork/releases/download/v2.29.0/pitchfork-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/jdx/pitchfork/releases/assets/599253285"
+
+[tools.pitchfork."platforms.linux-arm64-musl"]
+checksum = "sha256:dfea08ac9b4a8b2a3f4c9ce94c5faba9a1996634a22bdc6fd17510affe9dca71"
+url = "https://github.com/jdx/pitchfork/releases/download/v2.29.0/pitchfork-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/jdx/pitchfork/releases/assets/599253285"
 
 [tools.pitchfork."platforms.linux-x64"]
-checksum = "sha256:7ce68158201430d3f5bb5b6c96778e3f638abfa209147713b0392f54bfadef4a"
-url = "https://github.com/jdx/pitchfork/releases/download/v2.25.0/pitchfork-x86_64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/jdx/pitchfork/releases/assets/557424504"
+checksum = "sha256:80d48f7077f8612c7684777aef346b93d3ecca296d4d9b392b2fb5e50a4f891d"
+url = "https://github.com/jdx/pitchfork/releases/download/v2.29.0/pitchfork-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/jdx/pitchfork/releases/assets/599252450"
+
+[tools.pitchfork."platforms.linux-x64-musl"]
+checksum = "sha256:80d48f7077f8612c7684777aef346b93d3ecca296d4d9b392b2fb5e50a4f891d"
+url = "https://github.com/jdx/pitchfork/releases/download/v2.29.0/pitchfork-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/jdx/pitchfork/releases/assets/599252450"
 
 [tools.pitchfork."platforms.macos-arm64"]
-checksum = "sha256:c244393367ac84814f7a4e44b6a4cdf82d55d8fb6494d18d5c7cbcbf368c6a79"
-url = "https://github.com/jdx/pitchfork/releases/download/v2.25.0/pitchfork-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/jdx/pitchfork/releases/assets/557440747"
+checksum = "sha256:06adf144e4a48dad55806706a7b0fe1a8dfc901726c5c8939e54fbc2bcabb04e"
+url = "https://github.com/jdx/pitchfork/releases/download/v2.29.0/pitchfork-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/jdx/pitchfork/releases/assets/599256238"
 
 [tools.pitchfork."platforms.windows-x64"]
-checksum = "sha256:02eb22a45af1b608fc0954335958cfe3c42c63d4b699091650781df8b42c89da"
-url = "https://github.com/jdx/pitchfork/releases/download/v2.25.0/pitchfork-x86_64-pc-windows-msvc.zip"
-url_api = "https://api.github.com/repos/jdx/pitchfork/releases/assets/557437679"
+checksum = "sha256:9747f3679f5c7ff4091bb3fe14c80ab92c9b15c212f37cd0193aa6e2da1631c1"
+url = "https://github.com/jdx/pitchfork/releases/download/v2.29.0/pitchfork-x86_64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/jdx/pitchfork/releases/assets/599271230"
 
 [[tools.ruby]]
 version = "4.0.7"
@@ -235,8 +245,8 @@ ruby_build_repo = "https://github.com/rbenv/ruby-build.git"
 ruby_install = "false"
 
 [tools.ruby."platforms.linux-arm64"]
-checksum = "sha256:453bf09d3991ada482dbcdae5af697ce59aaa5586f3f906a7ff46af5de9afed8"
-url = "https://github.com/jdx/ruby/releases/download/4.0.7-1/ruby-4.0.7.arm64_linux.tar.gz"
+checksum = "sha256:ed4a403f5cd7eb5941cb96e52e4382eaa81660715e4ce7c9c5dbb4bf77fcde37"
+url = "https://github.com/jdx/ruby/releases/download/4.0.7-2/ruby-4.0.7.arm64_linux.tar.gz"
 provenance = "github-attestations"
 
 [tools.ruby."platforms.linux-arm64-musl"]
@@ -244,8 +254,8 @@ checksum = "sha256:911ace20f90d068ca0e4dda6d0e4f0f81e52e52f2dd4f4004c721e253412e
 url = "https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.7.tar.gz"
 
 [tools.ruby."platforms.linux-x64"]
-checksum = "sha256:32cd7e6ac93126e0f91dc40a0d2e6213f24a38be77937671e6cb82f82ea4ffe2"
-url = "https://github.com/jdx/ruby/releases/download/4.0.7-1/ruby-4.0.7.x86_64_linux.tar.gz"
+checksum = "sha256:659c4c80138145f3be439b3e4275b616cc87022e9488b823d708ab75a77558a9"
+url = "https://github.com/jdx/ruby/releases/download/4.0.7-2/ruby-4.0.7.x86_64_linux.tar.gz"
 provenance = "github-attestations"
 
 [tools.ruby."platforms.linux-x64-musl"]
@@ -253,8 +263,8 @@ checksum = "sha256:911ace20f90d068ca0e4dda6d0e4f0f81e52e52f2dd4f4004c721e253412e
 url = "https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.7.tar.gz"
 
 [tools.ruby."platforms.macos-arm64"]
-checksum = "sha256:1b239cb6e4f8ba27e890e025c723c00ba781b993ac12aab2029618f347c2206d"
-url = "https://github.com/jdx/ruby/releases/download/4.0.7-1/ruby-4.0.7.macos.tar.gz"
+checksum = "sha256:6ad0acc5b0c437a2514679ff9a0f925e8b66ad4e96357e9ae2764b622f5d88d4"
+url = "https://github.com/jdx/ruby/releases/download/4.0.7-2/ruby-4.0.7.macos.tar.gz"
 provenance = "github-attestations"
 
 [tools.ruby."platforms.macos-x64"]
@@ -264,6 +274,7 @@ url = "https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.7.tar.gz"
 [[tools.ruby]]
 version = "4.0.7"
 backend = "core:ruby"
+specifiers = ["4"]
 
 [tools.ruby."platforms.windows-x64"]
 checksum = "sha256:7a9be96d3448ecbd9a81eccae1f619131dfcc761f2c98dded03ece6c05d0474f"
