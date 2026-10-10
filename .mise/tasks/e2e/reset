@@ -9,7 +9,7 @@
 #
 # Scoped strictly to e2e: it only touches the three e2e ports and the exact
 # `mise run //…:e2e` wrappers Playwright spawns. Dev servers (9292/5173,
-# pitchfork-managed) and unrelated processes are never touched. Killing by
+# mise daemons) and unrelated processes are never touched. Killing by
 # process GROUP takes a falcon-host supervisor, its forked workers, and their
 # fsevent_watch children down together — so no broad `pkill fsevent_watch`
 # (which would also kill dev's file watcher) is needed.

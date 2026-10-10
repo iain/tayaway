@@ -48,6 +48,9 @@ mise run dev
 
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:9292
+- Admin site: http://localhost:9393
+
+The servers run in the background as mise daemons (`[daemons]` in `mise.toml`, experimental). Follow them with `mise daemons logs -f` or `mise daemons tui`, and stop them with `mise daemons stop`.
 
 The frontend dev server proxies `/api/*` requests to the backend. Login link URLs are printed to the backend console.
 

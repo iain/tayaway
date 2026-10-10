@@ -1,16 +1,17 @@
-# Fail fast on older mise binaries. Now tracks the packslip backend: mise.lock
-# pins hk through `packslip:github.com/jdx/hk`, which mise added in 2026.9.2
-# and finished for lockfiles in 2026.9.6, including replacing an entry that
-# already carries aqua provenance (hk's).
+# Fail fast on older mise binaries. Now tracks the experimental `[daemons]`
+# that `mise run dev` hands the dev servers to — the version they were
+# verified on; daemon support is still changing release to release.
 #
-# Previous floors, all now implied: 2026.6.11 (`monorepo_root` shedding its
+# Previous floors, all now implied: 2026.9.6 (the packslip backend mise.lock
+# pins hk through, including replacing an entry that already carries aqua
+# provenance), 2026.6.11 (`monorepo_root` shedding its
 # `experimental_` prefix), 2026.7.12 (`mise lock --bump` itself), 2026.7.13
 # (a false "provenance regression" when bumping a locked `github:` tool to a
 # version already on disk — tools-lock.yml's exact path), and 2026.8.11
 # (`lockfile_version = 1`, which binds each original request like `node = "26"`
 # to the entry it resolved to, so tools-lock.yml's `mise lock --bump` can
 # advance overlapping loose and exact requests).
-min_version = "2026.9.6"
+min_version = "2026.10.7"
 
 # Marks this file as the root of a mise monorepo. Subproject mise.toml files
 # (listed below under [monorepo]) get their own tools, env, and tasks, and
@@ -64,6 +65,8 @@ from = "debian:trixie-slim"
 [tools]
 node = "26"
 ruby = "4"
+# The process manager behind `[daemons]`. mise installs it on demand, but the
+# shell auto start/stop hook won't, so keep it here (and pinned in mise.lock).
 pitchfork = "latest"
 # Git hook manager. Hooks are installed once per machine with `hk install
 # --global` (see setup:hooks for the per-repo fallback). hk is pinned (not
@@ -89,13 +92,55 @@ git-cliff = "latest"
 #
 
 [tasks.dev]
-description = "Start frontend + backend dev servers (managed by pitchfork)"
+description = "Start frontend + backend + admin dev servers (mise daemons)"
 alias = "d"
-# Hand the long-running servers to pitchfork rather than spawning them as
-# foreground children. `-l` starts every daemon in pitchfork.toml (backend +
-# frontend), ordered by their `depends`, and waits for readiness before
-# returning. Follow logs with `pitchfork logs -f` or watch via `pitchfork tui`.
-run = "pitchfork start -l"
+# Hand the long-running servers to mise daemons (pitchfork underneath) rather
+# than spawning them as foreground children. Starts every daemon in the
+# `default` group, ordered by their `depends`, and waits for readiness before
+# returning. Follow logs with `mise daemons logs -f` or watch via
+# `mise daemons tui`.
+run = "mise daemons start"
+
+# ── Daemons ──────────────────────────────────────────────────────────────────
+#
+# Experimental (needs `experimental = true`, set above). mise registers these
+# with pitchfork and runs each through `mise run`, so they get the project's
+# tools and env. They use `run = "exec mise run //…"` rather than `task =`
+# because daemon tasks don't resolve monorepo `//path:task` references.
+# `ready_port` is the readiness check that `depends` consumers
+# and `mise daemons start` wait on — `port` alone only checks availability.
+
+[daemon_groups]
+default = ["backend", "frontend", "admin"]
+
+[daemons.backend]
+run = "exec mise run //backend:dev"
+port = 9292
+# Blocks until falcon is accepting on 9292, i.e. after `dev`'s db:seed + boot,
+# which is what makes the frontend's `depends` ordering meaningful.
+ready_port = 9292
+# LANG: without a UTF-8 locale Ruby's default external encoding is US-ASCII,
+# and Rack::Builder.load_file crashes on any non-ASCII byte in a rackup file.
+# Daemons don't inherit the interactive shell's locale (e.g. MCP-started).
+env = { FRONTEND_URL = "https://tayaway.localhost", LANG = "en_US.UTF-8" }
+
+[daemons.frontend]
+run = "exec mise run //frontend:dev"
+depends = ["backend"]
+port = 5173
+ready_port = 5173
+# The readiness probe dials 127.0.0.1, which can't reach vite's default
+# IPv6-only `localhost` bind on macOS.
+env = { FRONTEND_HOST = "127.0.0.1" }
+
+# The operator-only admin site (doc/admin.md). `mise daemons start admin`
+# starts just this one.
+[daemons.admin]
+run = "exec mise run //backend:admin:dev"
+port = 9393
+ready_port = 9393
+# See the backend daemon's LANG note.
+env = { LANG = "en_US.UTF-8" }
 
 [tasks.check]
 description = "Full local validation: lint, typecheck, test, audit (no e2e)"
