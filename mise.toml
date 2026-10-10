@@ -109,22 +109,29 @@ run = "mise daemons start"
 # because daemon tasks don't resolve monorepo `//path:task` references.
 # `ready_port` is the readiness check that `depends` consumers
 # and `mise daemons start` wait on — `port` alone only checks availability.
+#
+# Daemon names are not free: mise exports `<NAME>_PORT` and `<NAME>_URL` for
+# every daemon with a `port` into the whole project's env, tests included.
+# That's why the vite daemon is `web` — as `frontend` it exported a proxy
+# hostname as FRONTEND_URL, which broke WebAuthn wherever .env.test didn't set
+# its own. Keep names clear of variables the app reads (backend/config/schema.rb,
+# FRONTEND_PORT, API_PORT).
 
 [daemon_groups]
-default = ["backend", "frontend", "admin"]
+default = ["backend", "web", "admin"]
 
 [daemons.backend]
 run = "exec mise run //backend:dev"
 port = 9292
 # Blocks until falcon is accepting on 9292, i.e. after `dev`'s db:seed + boot,
-# which is what makes the frontend's `depends` ordering meaningful.
+# which is what makes the web daemon's `depends` ordering meaningful.
 ready_port = 9292
 # LANG: without a UTF-8 locale Ruby's default external encoding is US-ASCII,
 # and Rack::Builder.load_file crashes on any non-ASCII byte in a rackup file.
 # Daemons don't inherit the interactive shell's locale (e.g. MCP-started).
 env = { FRONTEND_URL = "https://tayaway.localhost", LANG = "en_US.UTF-8" }
 
-[daemons.frontend]
+[daemons.web]
 run = "exec mise run //frontend:dev"
 depends = ["backend"]
 port = 5173
