@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { mount, type VueWrapper } from '@vue/test-utils'
+import { afterEach, describe, it, expect } from 'vitest'
+import { enableAutoUnmount, mount, type VueWrapper } from '@vue/test-utils'
 import VoteBreakdown from './VoteBreakdown.vue'
 import { makeMember } from '@/test/factories'
 import type { HydratedVote } from '@/composables/useHydratedEvent'
@@ -40,6 +40,8 @@ function readGroups(wrapper: VueWrapper) {
       names: group.get('[data-testid="vote-breakdown-names"]').text(),
     }))
 }
+
+enableAutoUnmount(afterEach)
 
 describe('VoteBreakdown', () => {
   it('lists voters grouped by response, best answer first', () => {
@@ -112,6 +114,9 @@ describe('VoteBreakdown', () => {
         ],
         members: [],
       },
+      // isVisible() reads computed style, which jsdom only resolves for
+      // elements in the document.
+      attachTo: document.body,
     })
 
     expect(

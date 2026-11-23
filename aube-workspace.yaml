@@ -12,6 +12,17 @@ allowBuilds:
   puppeteer: false
 enableGlobalVirtualStore: false
 
+# Held back from `mise run upgrade` (aube update --latest). Remove an entry
+# once its blocker clears.
+#
+# typescript — TypeScript 7 is the native port and no longer ships
+# `typescript/lib/tsc`, which vue-tsc 3.3 loads (it fails with
+# ERR_PACKAGE_PATH_NOT_EXPORTED). vue-tsc's `>=5.0.0` peer range doesn't
+# catch this, so wait for a vue-tsc release that supports 7.
+updateConfig:
+  ignoreDependencies:
+    - typescript
+
 # Serialize the linker. aube 1.23's materializer races at link-concurrency's
 # linux default of 16 — parallel tasks collide creating the same nested symlink
 # (EEXIST, e.g. @types/estree under @rollup/pluginutils), failing container and

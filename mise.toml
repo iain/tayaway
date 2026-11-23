@@ -74,7 +74,7 @@ pitchfork = "latest"
 # must match that schema, so bump both together (`mise run upgrade` does).
 # hk embeds its own pkl evaluator, so no separate pkl CLI tool is
 # needed to parse hk.pkl.
-hk = "2.5.0"
+hk = "2.13.0"
 aube = "latest"
 taplo = "latest"
 shellcheck = "latest"

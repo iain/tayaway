@@ -11,9 +11,9 @@
     "typecheck": "mise run typecheck"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1",
-    "@types/node": "^26.4.1",
-    "prettier": "^3.9.6",
+    "@playwright/test": "^1.65.1",
+    "@types/node": "^26.6.6",
+    "prettier": "^3.10.1",
     "prettier-plugin-tailwindcss": "^0.8.1"
   }
 }

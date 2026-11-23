@@ -730,8 +730,8 @@ function handleDownloadIcs(): void {
       <template v-else>
         <p class="text-ink-muted text-sm">
           Permanently delete
-          <strong class="text-ink">{{ event?.name }}</strong
-          >? This can't be undone.
+          <strong class="text-ink">{{ event?.name }}</strong>? This can't be
+          undone.
         </p>
         <p v-if="deleteSummary.length > 0" class="text-ink-muted mt-2 text-sm">
           This will also delete {{ deleteSummary.join(', ') }}.
