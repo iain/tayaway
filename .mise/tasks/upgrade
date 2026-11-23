@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+#MISE description="Upgrade every dependency: mise tools, gems, and aube packages (past their ranges), plus Playwright's browser"
+
+# Container base images and GitHub Actions are left to Dependabot: their
+# majors (postgres especially, which needs a pg_upgrade) are deploy decisions,
+# not routine bumps.
+#
+# Mise tools move within their declared requests (`latest`, `node = "26"`),
+# so a new Node or Ruby major stays a deliberate edit to mise.toml. hk is the
+# exception: it's pinned exactly, in lockstep with hk.pkl's `amends` URL, so
+# it gets bumped explicitly with both moved together.
+#
+# Gems respect the Gemfile's constraints, which are there for a reason (see
+# the comments next to them). npm packages go past their ranges with
+# `--latest`, rewriting package.json.
+
+set -euo pipefail
+
+echo "→ Bumping hk (mise.toml + hk.pkl in lockstep)"
+current_hk=$(sed -nE 's|^amends ".*/hk@([0-9.]+)#/Config.pkl"$|\1|p' hk.pkl)
+latest_hk=$(mise latest hk)
+if [ "$current_hk" = "$latest_hk" ]; then
+  echo "  hk is already at $latest_hk"
+else
+  echo "  hk $current_hk → $latest_hk"
+  mise lock "hk@$latest_hk"
+  perl -pi -e "s|v\Q$current_hk\E/hk\@\Q$current_hk\E#|v$latest_hk/hk\@$latest_hk#|" hk.pkl
+fi
+
+echo "→ Bumping the other mise tools within their requests"
+mise lock --bump
+
+# The postinstall hook runs setup:deps, so this also reinstalls gems and
+# node_modules against any new Ruby or Node.
+echo "→ Installing the bumped tools"
+mise install
+
+echo "→ Updating gems"
+(cd backend && bundle update --all && bundle update --bundler)
+
+echo "→ Updating npm packages past their ranges"
+aube update --latest
+aube update --latest --recursive
+
+# `aube update` only touches direct deps; a transitive that still satisfies
+# its parent's range is never re-resolved, so security fixes in it get missed.
+echo "→ Re-resolving transitive npm packages"
+aube dedupe
+
+echo "→ Installing the browser for the new Playwright"
+aube exec playwright install chromium
+
+echo
+git diff --stat
+echo
+echo "Done. Run 'mise run check' (and 'mise run e2e') to see what the upgrades broke."
