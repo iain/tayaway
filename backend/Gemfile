@@ -24,7 +24,7 @@ gem "sqlite3"
 # default copy is 2.18.0 and containers/Containerfile deletes it, leaving this
 # the only json in the image. Capped below 3.0 because json 3 removed the
 # create_additions option, which sequel 5.108 still passes when parsing jsonb.
-gem "json", ">= 2.19.2", "< 3"
+gem "json", ">= 2.19.2", "< 4"
 gem "jwt"
 
 # Email
