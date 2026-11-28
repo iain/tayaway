@@ -74,7 +74,8 @@ description = "RSpec — extra args pass through to rspec"
 # block reloads .env.test for the inner process. See dev:e2e for the
 # longer explanation of why neither task `env =` nor `--env` works.
 shell = "bash -c"
-run = 'MISE_ENV=test mise exec -- bundle exec rspec -f progress "$@"'
+# The JSON results feed the Sync Engine v2 coverage report (scripts/sync-coverage).
+run = 'MISE_ENV=test mise exec -- bundle exec rspec -f progress -f json -o ../tmp/sync-coverage/rspec.json "$@"'
 
 [tasks.audit]
 description = "bundler-audit"

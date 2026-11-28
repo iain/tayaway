@@ -779,22 +779,34 @@ Decisions the spec needs before the guarantees above can be final. Each lists th
 
 ## Coverage
 
-*Planned, not built yet.*
+Run `mise run sync:coverage` for the report. It is built by `scripts/sync-coverage` (no AI) from this document and the JSON results the test runners write to `tmp/sync-coverage/` on every run, so it reflects the latest run of each suite.
 
-Tests declare which IDs they cover:
+### Tagging tests
 
-- **RSpec:** metadata, `it "…", covers: %w[SYNC-G-302] do`
-- **Vitest:** the ID in the test name, `it('[SYNC-G-402] keeps pending value while response is in flight', …)`
-- **Playwright:** the `tag` option, `test('…', { tag: ['@SYNC-S-001', '@SYNC-G-503'] }, …)`
+A test covers an ID by naming it, in brackets, in its name or the name of an enclosing group. This works the same in every runner and shows up in test output:
 
-A script (no AI) builds the report from this document and the test runners' JSON output, so only tests that ran and passed count:
+- **RSpec:** `it "[SYNC-G-302] returns rows committed while a sync ran" do`
+- **Vitest:** `it('[SYNC-G-402] keeps the pending value while the response is in flight', …)`
+- **Playwright:** `test('[SYNC-S-001] shopping without signal', …)`; IDs in the `tag` option (`{ tag: '@SYNC-G-503' }`) count too.
 
-- **Covered:** each ID with the tests that cover it.
-- **Uncovered:** IDs with no passing test. Reported; becomes a CI gate once the spec is agreed.
-- **Unknown:** tags that point at an ID not defined here. Fails CI from day one.
-- **Retired:** tags pointing at a retired ID. Fails CI, so stale tests get cleaned up.
+A guarantee that doesn't hold yet gets a test that is marked as expected to fail. It runs normally, is reported as a known gap while it fails, and fails the run once it passes, so the marker has to be removed together with the fix:
 
-A scenario counts as covered when an end-to-end test tagged with its ID passes. A guarantee needs its own tagged test; being listed under a covered scenario is not enough.
+- **RSpec:** `known_gap: true` metadata (`backend/spec/support/sync_coverage.rb`)
+- **Vitest:** the `known-gap` tag, `{ tags: ['known-gap'] }` (`frontend/vitest.config.ts`)
+- **Playwright:** `test.fail()`
+
+### The report
+
+Each guarantee and scenario gets one status, the first that applies:
+
+- **Failing:** a tagged test failed unexpectedly.
+- **Known gap:** a tagged test is marked as expected to fail and still does.
+- **Covered:** a tagged test passed.
+- **Uncovered:** no tagged test ran. Reported; becomes a CI gate once the spec is agreed.
+
+The run fails when a test is tagged with an ID it may not use: one not defined here, a retired one, or a principle (principles are realised through guarantees and aren't coverage targets).
+
+A scenario counts as covered only by an end-to-end test; tagging a scenario in another runner is an error. A guarantee needs its own tagged test; being listed under a covered scenario is not enough.
 
 A tag only shows that a test *claims* to cover an ID. Whether it does is a review question; the report lists test names next to each ID to make that review quick.
 

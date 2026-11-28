@@ -32,7 +32,8 @@ run = "aube exec vue-tsc -b"
 description = "Vitest (one-shot) — extra args pass through to vitest"
 # Locked to `vitest run` so this task is always non-watch; users who want
 # watch mode should `mise watch test:frontend` or invoke vitest directly.
-run = 'aube exec vitest run --reporter=dot --silent=true "$@"'
+# The JSON results feed the Sync Engine v2 coverage report (scripts/sync-coverage).
+run = 'aube exec vitest run --reporter=dot --reporter=json --outputFile.json=../tmp/sync-coverage/vitest.json --silent=true "$@"'
 
 [tasks.audit]
 description = "aube audit"

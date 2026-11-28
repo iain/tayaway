@@ -145,3 +145,94 @@ export function readPlaywright(json: PlaywrightJson): TestResult[] {
     .flatMap((file) => playwrightSpecs(file, []))
     .filter((result) => result.ids.length > 0)
 }
+
+export type Status = 'covered' | 'known-gap' | 'failing' | 'uncovered'
+
+export type ReportEntry = SpecEntry & { status: Status; tests: TestResult[] }
+
+export type Report = { entries: ReportEntry[]; errors: string[] }
+
+function statusOf(tests: TestResult[]): Status {
+  const outcomes = new Set(tests.map((test) => test.outcome))
+  if (outcomes.has('failed')) {
+    return 'failing'
+  } else if (outcomes.has('known-gap')) {
+    return 'known-gap'
+  } else if (outcomes.has('passed')) {
+    return 'covered'
+  } else {
+    return 'uncovered'
+  }
+}
+
+// A scenario is a user-visible flow, so only an end-to-end test can show it works.
+function counts(entry: SpecEntry, result: TestResult): boolean {
+  if (entry.kind === 'scenario') {
+    return result.runner === 'playwright'
+  } else {
+    return true
+  }
+}
+
+function tagErrors(spec: SpecEntry[], result: TestResult): string[] {
+  const where = `${result.name} (${result.runner})`
+  return result.ids.flatMap((id) => {
+    const entry = spec.find((candidate) => candidate.id === id)
+    if (!entry) {
+      return [`${where}: ${id} is not defined in the spec`]
+    } else if (entry.retired) {
+      return [`${where}: ${id} is retired`]
+    } else if (entry.kind === 'principle') {
+      return [`${where}: principle ${id} is not a coverage target; tag the guarantees that realise it`]
+    } else if (!counts(entry, result)) {
+      return [`${where}: scenario ${id} can only be covered by an end-to-end test`]
+    } else {
+      return []
+    }
+  })
+}
+
+export function buildReport(spec: SpecEntry[], results: TestResult[]): Report {
+  const entries = spec
+    .filter((entry) => entry.kind !== 'principle' && !entry.retired)
+    .map((entry) => {
+      const tests = results.filter((result) => result.ids.includes(entry.id) && counts(entry, result))
+      return { ...entry, status: statusOf(tests), tests }
+    })
+  const errors = results.flatMap((result) => tagErrors(spec, result))
+  return { entries, errors }
+}
+
+const STATUS_LABELS: [Status, string][] = [
+  ['failing', 'Failing'],
+  ['known-gap', 'Known gap'],
+  ['covered', 'Covered'],
+  ['uncovered', 'Uncovered'],
+]
+
+function formatEntry(entry: ReportEntry): string[] {
+  const heading = `- **${entry.id}** ${entry.title}`
+  const tests = entry.tests.map((test) => `  - ${test.name} (${test.runner})`)
+  return [heading, ...tests]
+}
+
+export function formatReport(report: Report): string {
+  const lines = ['# Sync Engine v2 coverage', '', '| Status | Count |', '|---|---|']
+  for (const [status, label] of STATUS_LABELS) {
+    const count = report.entries.filter((entry) => entry.status === status).length
+    lines.push(`| ${label} | ${count} |`)
+  }
+  lines.push('')
+
+  for (const [status, label] of STATUS_LABELS) {
+    const entries = report.entries.filter((entry) => entry.status === status)
+    if (entries.length > 0) {
+      lines.push(`## ${label}`, '', ...entries.flatMap(formatEntry), '')
+    }
+  }
+
+  if (report.errors.length > 0) {
+    lines.push('## Errors', '', ...report.errors.map((error) => `- ${error}`), '')
+  }
+  return lines.join('\n')
+}

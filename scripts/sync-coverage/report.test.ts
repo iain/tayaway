@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { parseSpec, readPlaywright, readRspec, readVitest } from './report.ts'
+import { buildReport, formatReport, parseSpec, readPlaywright, readRspec, readVitest } from './report.ts'
+import type { SpecEntry, TestResult } from './report.ts'
 
 describe('parseSpec', () => {
   it('finds principles, guarantees and scenarios defined by headings', () => {
@@ -113,5 +114,108 @@ describe('readPlaywright', () => {
       { runner: 'playwright', name: '[SYNC-S-001] Shopping without signal [SYNC-G-406] retried', ids: ['SYNC-S-001', 'SYNC-G-406'], outcome: 'passed' },
       { runner: 'playwright', name: '[SYNC-S-001] Shopping without signal [SYNC-G-407] skipped', ids: ['SYNC-S-001', 'SYNC-G-407'], outcome: 'skipped' },
     ])
+  })
+})
+
+function guarantee(id: string): SpecEntry {
+  return { id, kind: 'guarantee', title: `Title of ${id}`, retired: false }
+}
+
+function result(ids: string[], outcome: TestResult['outcome'], runner: TestResult['runner'] = 'vitest'): TestResult {
+  return { runner, name: `test of ${ids.join(' ')}`, ids, outcome }
+}
+
+describe('buildReport', () => {
+  it('gives each guarantee one status: failing over known gap over covered over uncovered', () => {
+    const spec = ['SYNC-G-101', 'SYNC-G-102', 'SYNC-G-103', 'SYNC-G-104', 'SYNC-G-105'].map(guarantee)
+    const results = [
+      result(['SYNC-G-101'], 'passed'),
+      result(['SYNC-G-102'], 'passed'),
+      result(['SYNC-G-102'], 'known-gap'),
+      result(['SYNC-G-103'], 'known-gap'),
+      result(['SYNC-G-103'], 'failed'),
+      result(['SYNC-G-104'], 'skipped'),
+    ]
+
+    const statuses = buildReport(spec, results).entries.map((entry) => [entry.id, entry.status])
+
+    assert.deepEqual(statuses, [
+      ['SYNC-G-101', 'covered'],
+      ['SYNC-G-102', 'known-gap'],
+      ['SYNC-G-103', 'failing'],
+      ['SYNC-G-104', 'uncovered'],
+      ['SYNC-G-105', 'uncovered'],
+    ])
+  })
+  it('counts only end-to-end tests for scenarios and reports scenario tags elsewhere', () => {
+    const spec: SpecEntry[] = [{ id: 'SYNC-S-001', kind: 'scenario', title: 'Shopping', retired: false }]
+    const results = [result(['SYNC-S-001'], 'failed', 'vitest'), result(['SYNC-S-001'], 'known-gap', 'playwright')]
+
+    const report = buildReport(spec, results)
+
+    assert.deepEqual(
+      report.entries.map((entry) => [entry.id, entry.status]),
+      [['SYNC-S-001', 'known-gap']],
+    )
+    assert.deepEqual(report.errors, [
+      'test of SYNC-S-001 (vitest): scenario SYNC-S-001 can only be covered by an end-to-end test',
+    ])
+  })
+  it('reports tags that point at unknown, retired or principle IDs', () => {
+    const spec: SpecEntry[] = [
+      { id: 'SYNC-P-7', kind: 'principle', title: 'Order from the server', retired: false },
+      { id: 'SYNC-G-101', kind: 'guarantee', title: 'Old', retired: true },
+    ]
+    const results = [result(['SYNC-G-999', 'SYNC-G-101', 'SYNC-P-7'], 'passed')]
+
+    assert.deepEqual(buildReport(spec, results).errors, [
+      'test of SYNC-G-999 SYNC-G-101 SYNC-P-7 (vitest): SYNC-G-999 is not defined in the spec',
+      'test of SYNC-G-999 SYNC-G-101 SYNC-P-7 (vitest): SYNC-G-101 is retired',
+      'test of SYNC-G-999 SYNC-G-101 SYNC-P-7 (vitest): principle SYNC-P-7 is not a coverage target; tag the guarantees that realise it',
+    ])
+  })
+})
+
+describe('formatReport', () => {
+  it('summarises counts, lists IDs per status with their tests, and lists errors', () => {
+    const spec = ['SYNC-G-101', 'SYNC-G-102', 'SYNC-G-103'].map(guarantee)
+    const results = [
+      result(['SYNC-G-101'], 'passed'),
+      result(['SYNC-G-102'], 'known-gap', 'rspec'),
+      result(['SYNC-G-999'], 'passed'),
+    ]
+
+    assert.equal(
+      formatReport(buildReport(spec, results)),
+      [
+        '# Sync Engine v2 coverage',
+        '',
+        '| Status | Count |',
+        '|---|---|',
+        '| Failing | 0 |',
+        '| Known gap | 1 |',
+        '| Covered | 1 |',
+        '| Uncovered | 1 |',
+        '',
+        '## Known gap',
+        '',
+        '- **SYNC-G-102** Title of SYNC-G-102',
+        '  - test of SYNC-G-102 (rspec)',
+        '',
+        '## Covered',
+        '',
+        '- **SYNC-G-101** Title of SYNC-G-101',
+        '  - test of SYNC-G-101 (vitest)',
+        '',
+        '## Uncovered',
+        '',
+        '- **SYNC-G-103** Title of SYNC-G-103',
+        '',
+        '## Errors',
+        '',
+        '- test of SYNC-G-999 (vitest): SYNC-G-999 is not defined in the spec',
+        '',
+      ].join('\n'),
+    )
   })
 })

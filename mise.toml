@@ -156,7 +156,13 @@ alias = "c"
 # shfmt, actionlint, cache-version, plus whitespace/merge/secret guards);
 # typecheck/test/audit still fan out per-subproject. The pre-commit hook is
 # managed by hk (hk.pkl), not a mise task — see setup:hooks.
-depends = ["lint", "//...:typecheck", "//...:test", "//...:audit"]
+depends = [
+  "lint",
+  "//...:typecheck",
+  "//...:test",
+  "test:scripts",
+  "//...:audit",
+]
 
 [tasks.ci]
 description = "Full CI: check + e2e"
@@ -190,7 +196,17 @@ depends = ["//...:typecheck"]
 [tasks.test]
 description = "Run unit and integration tests"
 alias = "t"
-depends = ["//...:test"]
+depends = ["//...:test", "test:scripts"]
+
+# Repo-level scripts (scripts/) aren't part of either subproject, so their
+# tests run from here. Node runs the TypeScript directly.
+[tasks."test:scripts"]
+description = "Tests for repo-level scripts"
+run = "node --test scripts/"
+
+[tasks."sync:coverage"]
+description = "Sync Engine v2 coverage report from the latest test results (doc/sync/roadmap.md)"
+run = "node scripts/sync-coverage/main.ts"
 
 [tasks.audit]
 description = "Dependency vulnerability scanning"

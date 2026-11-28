@@ -38,7 +38,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 1,
   workers: process.env.CI ? 2 : 4,
-  reporter: [['html', { open: 'never' }], ['dot']],
+  // The JSON results feed the Sync Engine v2 coverage report (scripts/sync-coverage).
+  reporter: [['html', { open: 'never' }], ['dot'], ['json', { outputFile: 'tmp/sync-coverage/playwright.json' }]],
   expect: {
     timeout: 5_000,
   },
