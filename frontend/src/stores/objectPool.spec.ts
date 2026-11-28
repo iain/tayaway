@@ -1,5 +1,5 @@
 import { Scope } from '@/api/scope'
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { watchEffect } from 'vue'
 import { useObjectPoolStore } from './objectPool'
@@ -1550,4 +1550,48 @@ describe('objectPool store', () => {
       expect(all.map((e) => e.name).sort()).toEqual(['Alpha', 'Beta'])
     })
   })
+})
+
+// Sync Engine v2: doc/sync/spec.md. The pool decides confirmation by comparing
+// the server's updatedAt with the phone's clock, which SYNC-P-7 rules out.
+describe('[SYNC-G-403] pending state ends only on confirmation', () => {
+  const scope = Scope.workspace('test')
+  const HOUR = 60 * 60 * 1000
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it(
+    'clears a pending change once the server confirms it, even when the phone clock runs an hour ahead',
+    { tags: ['known-gap'] },
+    () => {
+      const serverNow = new Date('2026-06-01T12:00:00.000Z').getTime()
+      vi.setSystemTime(serverNow + HOUR)
+      const pool = useObjectPoolStore()
+      pool.importObjects(
+        [
+          makeEvent({
+            updatedAt: '2026-06-01T11:00:00.000Z',
+            name: 'Original',
+          }),
+        ],
+        { scope }
+      )
+
+      pool.addPending('event', 'evt-1', { name: 'Renamed' })
+      // The server applies the rename a second later, by its own clock.
+      pool.importObjects(
+        [makeEvent({ updatedAt: '2026-06-01T12:00:01.000Z', name: 'Renamed' })],
+        { scope }
+      )
+
+      expect(pool.hasPending('event', 'evt-1')).toBe(false)
+    }
+  )
 })
