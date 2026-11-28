@@ -1,4 +1,4 @@
-# Sync engine prior art
+# Sync Engine v2: prior art
 
 Research notes for the sync engine spec. For each source: the problem it solves best, the mechanism, and what it suggests for Tayaway. This document is input to the spec, not part of it. Conclusions belong in the spec, and decisions stay open until we make them there.
 

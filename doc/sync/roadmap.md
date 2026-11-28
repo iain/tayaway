@@ -1,11 +1,11 @@
-# Sync engine roadmap
+# Sync Engine v2: roadmap
 
-How we get from the current engine to the one described in [spec.md](spec.md). Agreed 2026-11-28.
+**Sync Engine v2** is the project that takes the current engine to the one described in [spec.md](spec.md). This is its plan, agreed 2026-11-28.
 
 ## Steps
 
 1. **Coverage tooling.** Tag conventions and the report script (see [Coverage](spec.md#coverage)). Then turn [bugs-to-verify.md](bugs-to-verify.md) into expected-failure tests, which also exercises the tooling.
-2. **Decisions.** Record the default answers to the easy open questions in the spec, marked as revisitable. Write a short design document for *sync protocol v2* covering the connected one-way doors (`OQ-1`, `OQ-2`, `OQ-3`, `OQ-14`), and get it signed off before writing code. See [Proposed answers](spec.md#proposed-answers).
+2. **Decisions.** Record the default answers to the easy open questions in the spec, marked as revisitable. Write a short design document for *the protocol redesign* covering the connected one-way doors (`OQ-1`, `OQ-2`, `OQ-3`, `OQ-14`), and get it signed off before writing code. See [Proposed answers](spec.md#proposed-answers).
 3. **Gap inventory.** Complete it through the coverage report (below), then work through the gaps by workstream.
 
 ## Gap inventory
@@ -39,7 +39,7 @@ From the cheapest evidence up:
 
 Gaps are grouped by the architectural change that closes them, not by guarantee: one change often closes many. Expected workstreams:
 
-- **Cursor and confirmation** (sync protocol v2): `SYNC-G-302`, `308`, `309`, `311`, `312`, `316`, `318`, `403`, `407`, and others.
+- **Cursor and confirmation** (the protocol redesign): `SYNC-G-302`, `308`, `309`, `311`, `312`, `316`, `318`, `403`, `407`, and others.
 - **Mutation model** (intent, base values, replay): `SYNC-G-107`, `113`, `404`, `405`, `408`, `504`.
 - **Local storage and users**: `SYNC-G-105`, `106`, `108`, `901`.
 - **Visibility**: `SYNC-G-701`, `702`, `704`, `705`.

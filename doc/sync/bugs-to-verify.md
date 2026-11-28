@@ -1,4 +1,4 @@
-# Suspected sync bugs to verify
+# Sync Engine v2: suspected bugs to verify
 
 Found by reading code during the prior-art review (2026-11-28). None has been reproduced yet. Each one gets a failing test first; then it is either fixed or struck off as not a bug. Line numbers are approximate and from the commit at the time.
 

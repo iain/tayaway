@@ -1,4 +1,4 @@
-# Sync engine spec
+# Sync Engine v2: spec
 
 **Status: draft.** Principles are agreed. Guarantees and scenarios were seeded from the existing docs and extended with an in-depth prior-art review ([prior-art.md](prior-art.md), 2026-11-28); they are accepted as the target but open questions remain. They describe where the engine should be, not where it is today. Open questions are collected at the end and referenced inline as `OQ-n`.
 
@@ -757,7 +757,7 @@ Decisions the spec needs before the guarantees above can be final. Each lists th
 
 ### Proposed answers
 
-*Analysis of 2026-11-28, not yet decided.* The default is the obvious or most common answer in the prior art. "Reversibility" says how hard it would be to change the answer later. Questions marked **one-way** are decided together in the sync protocol v2 design (see [roadmap.md](roadmap.md)); the rest can adopt the default and be revisited freely.
+*Analysis of 2026-11-28, not yet decided.* The default is the obvious or most common answer in the prior art. "Reversibility" says how hard it would be to change the answer later. Questions marked **one-way** are decided together in the protocol redesign (see [roadmap.md](roadmap.md)); the rest can adopt the default and be revisited freely.
 
 | OQ | Proposed default | Reversibility |
 |---|---|---|
